@@ -165,6 +165,36 @@ function submitCommentWithReply(postId) {
     var replyToId = input.dataset.replyTo || '';
     submitComment(postId, replyToId || null);
 }
+
+function toggleLike(postId, el) {
+    fetch('/api/posts/' + postId + '/like', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            var countEl = el.querySelector('.like-count') || el.parentElement.querySelector('.like-count');
+            if (data.liked) {
+                el.classList.add('liked');
+                if (countEl) countEl.textContent = data.likeCount;
+            } else {
+                el.classList.remove('liked');
+                if (countEl) countEl.textContent = data.likeCount;
+            }
+        })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function acceptRequestOnProfile(id) {
+    fetch('/api/friend-request/' + id + '/accept', {method: 'POST'})
+        .then(r => r.json())
+        .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function rejectRequestOnProfile(id) {
+    fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
+        .then(r => r.json())
+        .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
 </script>
 
 </body>

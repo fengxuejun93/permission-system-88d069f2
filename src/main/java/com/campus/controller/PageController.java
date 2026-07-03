@@ -19,15 +19,17 @@ public class PageController {
     private final FriendService friendService;
     private final CommentService commentService;
     private final StatsService statsService;
+    private final LikeService likeService;
 
     public PageController(UserService userService, PostService postService,
                           FriendService friendService, CommentService commentService,
-                          StatsService statsService) {
+                          StatsService statsService, LikeService likeService) {
         this.userService = userService;
         this.postService = postService;
         this.friendService = friendService;
         this.commentService = commentService;
         this.statsService = statsService;
+        this.likeService = likeService;
     }
 
     private void addCommonAttributes(Model model) {
@@ -40,6 +42,8 @@ public class PageController {
         model.addAttribute("stats", stats);
         model.addAttribute("pendingRequests", pendingRequests);
         model.addAttribute("pendingCount", pendingRequests.size());
+        model.addAttribute("currentUserId", CURRENT_USER_ID);
+        model.addAttribute("friendIds", friendIds);
     }
 
     @GetMapping("/")
@@ -49,13 +53,14 @@ public class PageController {
         Set<Long> friendIds = friendService.getFriendIds(CURRENT_USER_ID);
         List<Post> posts = postService.getVisiblePosts(CURRENT_USER_ID, friendIds);
 
-        // 为每条动态附加作者信息和评论数
         List<Map<String, Object>> feedItems = new ArrayList<>();
         for (Post post : posts) {
             Map<String, Object> item = new HashMap<>();
             item.put("post", post);
             item.put("author", userService.findById(post.getUserId()));
             item.put("commentCount", commentService.getCommentsByPostId(post.getId()).size());
+            item.put("likeCount", likeService.countByPostId(post.getId()));
+            item.put("hasLiked", likeService.hasLiked(post.getId(), CURRENT_USER_ID));
             feedItems.add(item);
         }
 
@@ -70,17 +75,35 @@ public class PageController {
         Post post = postService.findById(id);
         if (post == null) return "redirect:/";
 
-        // 可见性检查
         Set<Long> friendIds = friendService.getFriendIds(CURRENT_USER_ID);
-        if (!isPostVisible(post, CURRENT_USER_ID, friendIds)) {
-            return "redirect:/";
-        }
+        boolean visible = isPostVisible(post, CURRENT_USER_ID, friendIds);
 
         User author = userService.findById(post.getUserId());
+
+        // 无论是否可见，都传入基本信息用于权限提示页
+        model.addAttribute("post", post);
+        model.addAttribute("author", author);
+        model.addAttribute("isOwner", post.getUserId().equals(CURRENT_USER_ID));
+
+        if (!visible) {
+            // 不可见：展示权限提示，但仍保留作者信息和返回入口
+            model.addAttribute("accessDenied", true);
+            String reason = switch (post.getVisibility()) {
+                case FRIENDS -> "该动态仅好友可见";
+                case PRIVATE -> "该动态仅发布者自己可见";
+                case PUBLIC -> "";
+            };
+            model.addAttribute("deniedReason", reason);
+            return "post-detail";
+        }
+
+        model.addAttribute("accessDenied", false);
         List<Comment> comments = commentService.getCommentsByPostId(id);
 
-        // 构建评论树
-        List<Map<String, Object>> commentItems = new ArrayList<>();
+        // 构建评论树：先找顶级评论，再找回复
+        Map<Long, List<Map<String, Object>>> repliesMap = new LinkedHashMap<>();
+        List<Map<String, Object>> topComments = new ArrayList<>();
+
         for (Comment c : comments) {
             Map<String, Object> item = new HashMap<>();
             item.put("comment", c);
@@ -91,13 +114,19 @@ public class PageController {
                     item.put("replyToUser", userService.findById(replyTo.getUserId()));
                 }
             }
-            commentItems.add(item);
+
+            if (c.getReplyToId() == null) {
+                topComments.add(item);
+            } else {
+                repliesMap.computeIfAbsent(c.getReplyToId(), k -> new ArrayList<>()).add(item);
+            }
         }
 
-        model.addAttribute("post", post);
-        model.addAttribute("author", author);
-        model.addAttribute("commentItems", commentItems);
-        model.addAttribute("isOwner", post.getUserId().equals(CURRENT_USER_ID));
+        model.addAttribute("topComments", topComments);
+        model.addAttribute("repliesMap", repliesMap);
+        model.addAttribute("commentCount", comments.size());
+        model.addAttribute("likeCount", likeService.countByPostId(id));
+        model.addAttribute("hasLiked", likeService.hasLiked(id, CURRENT_USER_ID));
         return "post-detail";
     }
 
@@ -111,7 +140,6 @@ public class PageController {
         List<FriendRequest> sentRequests = friendService.getSentRequests(CURRENT_USER_ID);
         List<FriendRequest> pendingRequests = friendService.getPendingRequests(CURRENT_USER_ID);
 
-        // 所有非好友用户（排除自己）
         List<User> allUsers = userService.findAll();
         List<Map<String, Object>> discoverUsers = new ArrayList<>();
         for (User u : allUsers) {
@@ -139,13 +167,45 @@ public class PageController {
 
         Set<Long> friendIds = friendService.getFriendIds(CURRENT_USER_ID);
         List<Post> userPosts = postService.getVisiblePostsByUser(id, CURRENT_USER_ID, friendIds);
-
         String relationship = friendService.getRelationship(CURRENT_USER_ID, id);
 
+        // 为个人主页的动态附加点赞和评论数
+        List<Map<String, Object>> postItems = new ArrayList<>();
+        for (Post post : userPosts) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("post", post);
+            item.put("commentCount", commentService.getCommentsByPostId(post.getId()).size());
+            item.put("likeCount", likeService.countByPostId(post.getId()));
+            postItems.add(item);
+        }
+
+        // 发布者的总动态数（包含不可见的）
+        int totalPostCount = postService.countPostsByUser(id);
+        // 好友数
+        int profileFriendCount = friendService.getFriendCount(id);
+
+        // 找到当前用户与目标用户之间的好友申请（如果有的话）
+        FriendRequest pendingReq = null;
+        for (FriendRequest r : friendService.getAllRequests()) {
+            if (r.getStatus() == FriendRequest.Status.PENDING) {
+                if ((r.getFromUserId().equals(CURRENT_USER_ID) && r.getToUserId().equals(id))
+                        || (r.getFromUserId().equals(id) && r.getToUserId().equals(CURRENT_USER_ID))) {
+                    pendingReq = r;
+                    break;
+                }
+            }
+        }
+
+        boolean hasPhotos = userPosts.stream().anyMatch(p -> !p.getPhotoUrls().isEmpty());
+
         model.addAttribute("profileUser", profileUser);
-        model.addAttribute("userPosts", userPosts);
+        model.addAttribute("postItems", postItems);
+        model.addAttribute("hasPhotos", hasPhotos);
         model.addAttribute("relationship", relationship);
         model.addAttribute("isSelf", id.equals(CURRENT_USER_ID));
+        model.addAttribute("totalPostCount", totalPostCount);
+        model.addAttribute("profileFriendCount", profileFriendCount);
+        model.addAttribute("pendingRequest", pendingReq);
         return "profile";
     }
 

@@ -8,43 +8,88 @@
     <aside th:replace="~{fragments :: sidebar}"></aside>
 
     <div class="content">
+        <!-- 返回链接 -->
+        <a href="/" class="back-link">&larr; 返回动态列表</a>
+
         <!-- 动态详情 -->
         <div class="card">
+            <!-- 发布人信息 -->
             <div class="feed-item" style="border-bottom:none;">
                 <div class="feed-header">
-                    <img th:src="${author.avatar}" alt="">
+                    <a th:href="@{/profile/{id}(id=${author.id})}"><img th:src="${author.avatar}" alt=""></a>
                     <div class="feed-user-info">
                         <a th:href="@{/profile/{id}(id=${author.id})}" class="feed-user-name" th:text="${author.displayName}">用户</a>
                         <div class="feed-meta">
                             <span th:text="${author.className}">班级</span>
+                            <span style="margin-left:6px;">
+                                <span class="online-dot" th:classappend="${author.online} ? 'on' : 'off'"></span>
+                                <span th:text="${author.online} ? '在线' : '离线'">在线</span>
+                            </span>
+                            <span style="margin-left:6px;" th:text="${author.relationshipStatus}">单身</span>
                             <span class="visibility-tag" th:classappend="${post.visibility.toString().toLowerCase()}" th:text="${post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
                         </div>
                     </div>
                 </div>
-                <div class="feed-content" th:text="${post.content}">内容</div>
-                <div class="feed-photos" th:if="${post.photoUrls.size() > 0}">
-                    <img th:each="url : ${post.photoUrls}" th:src="${url}" alt="照片">
+
+                <!-- 权限提示：不可见时 -->
+                <div th:if="${accessDenied}" class="access-denied">
+                    <div class="lock-icon">&#128274;</div>
+                    <div class="denied-title">无法查看此动态</div>
+                    <div class="denied-reason" th:text="${deniedReason}">权限不足</div>
+                    <div class="denied-actions">
+                        <a href="/" class="btn btn-outline btn-sm">返回首页</a>
+                        <a th:href="@{/profile/{id}(id=${author.id})}" class="btn btn-primary btn-sm">查看发布人主页</a>
+                    </div>
                 </div>
+
+                <!-- 可见时：展示内容 -->
+                <th:block th:if="${!accessDenied}">
+                    <div class="feed-content" th:text="${post.content}">内容</div>
+                    <div class="feed-photos" th:if="${post.photoUrls.size() > 0}">
+                        <img th:each="url : ${post.photoUrls}" th:src="${url}" alt="照片" loading="lazy">
+                    </div>
+                    <div class="post-time" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</div>
+                    <div class="detail-stats">
+                        <span class="like-btn" th:classappend="${hasLiked} ? 'liked'" th:attr="onclick='toggleLike(' + ${post.id} + ', this)'">
+                            <span th:text="${hasLiked} ? '&#9829;' : '&#9825;'">&#9825;</span>
+                            <span class="like-count" th:text="${likeCount}">0</span> 赞
+                        </span>
+                        <span>&#128172; <span th:text="${commentCount}">0</span> 评论</span>
+                    </div>
+                </th:block>
             </div>
         </div>
 
-        <!-- 评论区 -->
-        <div class="card">
-            <div class="card-header">评论 (<span th:text="${commentItems.size()}">0</span>)</div>
+        <!-- 评论区（仅可见时显示） -->
+        <div class="card" th:if="${!accessDenied}">
+            <div class="card-header">评论 (<span th:text="${commentCount}">0</span>)</div>
             <div class="card-body">
-                <div th:if="${#lists.isEmpty(commentItems)}" style="color:#999;text-align:center;">暂无评论，来说点什么吧</div>
+                <div th:if="${#lists.isEmpty(topComments)}" style="color:#999;text-align:center;">暂无评论，来说点什么吧</div>
+
+                <!-- 顶级评论 + 回复 -->
                 <div class="comment-list">
-                    <div th:each="ci : ${commentItems}" class="comment-item">
+                    <div th:each="ci : ${topComments}" class="comment-item">
                         <div class="comment-header">
-                            <img th:src="${ci.user.avatar}" alt="">
-                            <span class="comment-user" th:text="${ci.user.displayName}">用户</span>
-                            <span class="comment-time" th:text="${#temporals.format(ci.comment.createdAt, 'HH:mm')}">时间</span>
+                            <a th:href="@{/profile/{id}(id=${ci.user.id})}"><img th:src="${ci.user.avatar}" alt=""></a>
+                            <a th:href="@{/profile/{id}(id=${ci.user.id})}" class="comment-user" th:text="${ci.user.displayName}">用户</a>
+                            <span class="comment-time" th:text="${#temporals.format(ci.comment.createdAt, 'MM-dd HH:mm')}">时间</span>
                         </div>
-                        <div class="comment-body">
-                            <span th:if="${ci.replyToUser != null}" class="reply-to" th:text="'回复 @' + ${ci.replyToUser.displayName} + '：'"></span>
-                            <span th:text="${ci.comment.content}">评论内容</span>
-                        </div>
+                        <div class="comment-body" th:text="${ci.comment.content}">评论内容</div>
                         <div class="comment-reply-btn" th:attr="onclick='setReply(' + ${ci.comment.id} + ', &quot;' + ${ci.user.displayName} + '&quot;)'">回复</div>
+
+                        <!-- 楼中楼回复 -->
+                        <div class="reply-list" th:if="${repliesMap.get(ci.comment.id) != null and !repliesMap.get(ci.comment.id).isEmpty()}">
+                            <div th:each="reply : ${repliesMap.get(ci.comment.id)}" class="reply-item">
+                                <div class="comment-header">
+                                    <a th:href="@{/profile/{id}(id=${reply.user.id})}"><img th:src="${reply.user.avatar}" alt=""></a>
+                                    <a th:href="@{/profile/{id}(id=${reply.user.id})}" class="comment-user" th:text="${reply.user.displayName}">用户</a>
+                                    <span th:if="${reply.replyToUser != null}" class="reply-to" th:text="'回复 @' + ${reply.replyToUser.displayName}"></span>
+                                    <span class="comment-time" th:text="${#temporals.format(reply.comment.createdAt, 'MM-dd HH:mm')}">时间</span>
+                                </div>
+                                <div class="comment-body" th:text="${reply.comment.content}">回复内容</div>
+                                <div class="comment-reply-btn" th:attr="onclick='setReply(' + ${reply.comment.id} + ', &quot;' + ${reply.user.displayName} + '&quot;)'">回复</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

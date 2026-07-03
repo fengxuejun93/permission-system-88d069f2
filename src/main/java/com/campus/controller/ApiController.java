@@ -19,15 +19,17 @@ public class ApiController {
     private final FriendService friendService;
     private final CommentService commentService;
     private final StatsService statsService;
+    private final LikeService likeService;
 
     public ApiController(UserService userService, PostService postService,
                          FriendService friendService, CommentService commentService,
-                         StatsService statsService) {
+                         StatsService statsService, LikeService likeService) {
         this.userService = userService;
         this.postService = postService;
         this.friendService = friendService;
         this.commentService = commentService;
         this.statsService = statsService;
+        this.likeService = likeService;
     }
 
     @PostMapping("/posts")
@@ -84,6 +86,15 @@ public class ApiController {
                 result.put("replyToUser", userService.findById(replyTo.getUserId()));
             }
         }
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/posts/{postId}/like")
+    public ResponseEntity<?> toggleLike(@PathVariable Long postId) {
+        boolean liked = likeService.toggleLike(postId, CURRENT_USER_ID);
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", liked);
+        result.put("likeCount", likeService.countByPostId(postId));
         return ResponseEntity.ok(result);
     }
 

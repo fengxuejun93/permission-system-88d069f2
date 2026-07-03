@@ -14,13 +14,16 @@ public class MockDataInitializer implements CommandLineRunner {
     private final PostService postService;
     private final FriendService friendService;
     private final CommentService commentService;
+    private final LikeService likeService;
 
     public MockDataInitializer(UserService userService, PostService postService,
-                               FriendService friendService, CommentService commentService) {
+                               FriendService friendService, CommentService commentService,
+                               LikeService likeService) {
         this.userService = userService;
         this.postService = postService;
         this.friendService = friendService;
         this.commentService = commentService;
+        this.likeService = likeService;
     }
 
     @Override
@@ -48,10 +51,10 @@ public class MockDataInitializer implements CommandLineRunner {
 
         // 当前登录用户：张三(id=1)
         // 好友关系：张三-李四(已通过), 张三-赵六(已通过)
-        FriendRequest r1 = friendService.addRequest(2L, 1L); // 李四申请加张三
-        friendService.acceptRequest(r1.getId());  // 张三同意
-        FriendRequest r2 = friendService.addRequest(1L, 4L); // 张三申请加赵六
-        friendService.acceptRequest(r2.getId());  // 赵六同意
+        FriendRequest r1 = friendService.addRequest(2L, 1L);
+        friendService.acceptRequest(r1.getId());
+        FriendRequest r2 = friendService.addRequest(1L, 4L);
+        friendService.acceptRequest(r2.getId());
 
         // 待处理申请：王五申请加张三
         friendService.addRequest(3L, 1L);
@@ -75,11 +78,28 @@ public class MockDataInitializer implements CommandLineRunner {
                 Visibility.PUBLIC, List.of(
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=physics%20laboratory%20experiment%20equipment%20university&image_size=landscape_16_9")));
 
+        Post p6 = postService.createPost(new Post(null, 3L, "今天解了一道好难的积分题~仅好友可见",
+                Visibility.FRIENDS, List.of()));
+
+        Post p7 = postService.createPost(new Post(null, 5L, "周末实验室关门了，只有自己知道",
+                Visibility.PRIVATE, List.of()));
+
+        // 模拟点赞
+        likeService.addInitialLike(p1.getId(), 2L);
+        likeService.addInitialLike(p1.getId(), 4L);
+        likeService.addInitialLike(p1.getId(), 1L);
+        likeService.addInitialLike(p2.getId(), 1L);
+        likeService.addInitialLike(p5.getId(), 1L);
+        likeService.addInitialLike(p5.getId(), 2L);
+
         // 模拟评论
         Comment c1 = commentService.addComment(p1.getId(), 1L, null, "樱花确实美！我也去看了");
         Comment c2 = commentService.addComment(p1.getId(), 2L, null, "在哪？我也想去看");
         commentService.addComment(p1.getId(), 1L, c2.getId(), "就在图书馆后面那条路上~");
         commentService.addComment(p2.getId(), 1L, null, "哈哈哈确实，我都是五点半去排队的");
         commentService.addComment(p5.getId(), 1L, null, "恭喜！太厉害了");
+        commentService.addComment(p5.getId(), 2L, null, "物理实验好难");
+        Comment c7 = commentService.addComment(p5.getId(), 5L, null, "谢谢大家");
+        commentService.addComment(p5.getId(), 1L, c7.getId(), "继续加油！");
     }
 }

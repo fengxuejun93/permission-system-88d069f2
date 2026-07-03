@@ -29,7 +29,7 @@
             <div class="card-header">动态</div>
             <div th:each="item : ${feedItems}" class="feed-item">
                 <div class="feed-header">
-                    <img th:src="${item.author.avatar}" alt="">
+                    <a th:href="@{/profile/{id}(id=${item.author.id})}"><img th:src="${item.author.avatar}" alt=""></a>
                     <div class="feed-user-info">
                         <a th:href="@{/profile/{id}(id=${item.author.id})}" class="feed-user-name" th:text="${item.author.displayName}">用户</a>
                         <div class="feed-meta">
@@ -40,9 +40,14 @@
                 </div>
                 <div class="feed-content" th:text="${item.post.content}">内容</div>
                 <div class="feed-photos" th:if="${item.post.photoUrls.size() > 0}">
-                    <img th:each="url : ${item.post.photoUrls}" th:src="${url}" alt="照片">
+                    <img th:each="url : ${item.post.photoUrls}" th:src="${url}" alt="照片" loading="lazy">
                 </div>
+                <div class="post-time" th:text="${#temporals.format(item.post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</div>
                 <div class="feed-actions">
+                    <span class="like-btn" th:classappend="${item.hasLiked} ? 'liked'" th:attr="onclick='toggleLike(' + ${item.post.id} + ', this)'">
+                        <span th:text="${item.hasLiked} ? '&#9829;' : '&#9825;'">&#9825;</span>
+                        <span class="like-count" th:text="${item.likeCount}">0</span>
+                    </span>
                     <a th:href="@{/post/{id}(id=${item.post.id})}">评论 (<span th:text="${item.commentCount}">0</span>)</a>
                 </div>
             </div>

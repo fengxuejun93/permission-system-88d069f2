@@ -128,3 +128,45 @@ a:hover { text-decoration: underline; }
 .tab { padding: 10px 20px; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; color: #888; }
 .tab.active { color: #3b5998; border-bottom-color: #3b5998; font-weight: 600; }
 .tab:hover { color: #3b5998; }
+
+/* 点赞 */
+.like-btn { cursor: pointer; font-size: 13px; color: #888; display: inline-flex; align-items: center; gap: 3px; }
+.like-btn:hover { color: #e74c3c; }
+.like-btn.liked { color: #e74c3c; }
+.like-btn.liked:hover { color: #999; }
+.feed-actions .like-btn { background: none; border: none; padding: 0; }
+
+/* 权限提示 */
+.access-denied { text-align: center; padding: 40px 20px; }
+.access-denied .lock-icon { font-size: 48px; margin-bottom: 12px; }
+.access-denied .denied-title { font-size: 16px; font-weight: 600; color: #555; margin-bottom: 6px; }
+.access-denied .denied-reason { font-size: 13px; color: #999; margin-bottom: 16px; }
+.access-denied .denied-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* 返回链接 */
+.back-link { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #888; margin-bottom: 12px; cursor: pointer; }
+.back-link:hover { color: #3b5998; text-decoration: none; }
+
+/* 发布时间 */
+.post-time { font-size: 12px; color: #aaa; margin-top: 6px; }
+
+/* 详情页统计 */
+.detail-stats { display: flex; gap: 16px; padding: 10px 0; font-size: 13px; color: #666; border-bottom: 1px solid #f0f0f0; }
+
+/* 回复列表 */
+.reply-list { margin-left: 36px; margin-top: 6px; padding-left: 10px; border-left: 2px solid #e8e8e8; }
+.reply-item { padding: 6px 0; }
+.reply-item .comment-header img { width: 24px; height: 24px; }
+
+/* 个人主页统计 */
+.profile-stats { display: flex; justify-content: center; gap: 24px; margin-top: 10px; }
+.profile-stat { text-align: center; }
+.profile-stat .num { font-size: 18px; font-weight: bold; color: #3b5998; }
+.profile-stat .label { font-size: 11px; color: #999; }
+
+/* 个人主页好友申请操作 */
+.profile-request-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+
+/* 照片网格 */
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 10px; }
+.photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
