@@ -234,6 +234,26 @@ public class ApiController {
         return ResponseEntity.ok(friendService.getRelationship(uid(), targetUserId));
     }
 
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("status", "UP");
+        info.put("service", "campus-social");
+        info.put("port", 8080);
+        info.put("users", userService.findAll().size());
+        info.put("posts", postService.getAllPosts().size());
+        info.put("friendRequests", friendService.getAllRequests().size());
+
+        Map<String, String> pages = new LinkedHashMap<>();
+        pages.put("首页", "/");
+        pages.put("好友页", "/friends");
+        pages.put("个人主页", "/profile/1");
+        pages.put("动态详情", "/post/101");
+        pages.put("异常演示区", "/debug");
+        info.put("pages", pages);
+        return ResponseEntity.ok(info);
+    }
+
     private boolean isPostVisible(Post p, Long currentUserId, Set<Long> friendIds, boolean isAdmin) {
         if (p.getStatus() == PostStatus.HIDDEN) {
             if (p.getUserId().equals(currentUserId)) return true;
