@@ -19,9 +19,15 @@
             <span th:if="${pendingCount > 0}" class="badge" th:text="${pendingCount}">0</span>
         </a>
     </div>
-    <div class="user-info">
-        <img th:src="${currentUser.avatar}" alt="avatar">
-        <a href="/profile/1" style="color:#fff" th:text="${currentUser.displayName}">用户</a>
+    <!-- 用户切换器 -->
+    <div class="user-switcher">
+        <span style="font-size:12px;color:rgba(255,255,255,0.7);margin-right:4px;">视角：</span>
+        <form method="POST" action="/switch-user" style="display:inline;">
+            <select name="userId" onchange="this.form.submit()" class="user-select">
+                <option th:each="u : ${allUsers}" th:value="${u.id}" th:selected="${u.id == currentUserId}"
+                        th:text="${u.displayName} + ' (' + ${u.className} + ')'">用户</option>
+            </select>
+        </form>
     </div>
 </nav>
 
@@ -115,7 +121,7 @@ function rejectRequest(id) {
 
 function sendRequest(toUserId, btn) {
     fetch('/api/friend-request?toUserId=' + toUserId, {method: 'POST'})
-        .then(r => r.json())
+        .then(r => { if(!r.ok) throw new Error(); return r.json(); })
         .then(() => { showToast('好友申请已发送', 'success'); btn.textContent = '已申请'; btn.disabled = true; btn.className = 'btn btn-sm btn-outline'; })
         .catch(() => showToast('操作失败', 'error'));
 }
@@ -125,16 +131,18 @@ function publishPost() {
     if (!content) { showToast('请输入内容', 'error'); return; }
     var visibility = document.getElementById('postVisibility').value;
     var photoUrl = document.getElementById('postPhotoUrl').value.trim();
+    var status = document.getElementById('postStatus') ? document.getElementById('postStatus').value : 'PUBLISHED';
 
     var formData = new FormData();
     formData.append('content', content);
     formData.append('visibility', visibility);
+    formData.append('status', status);
     if (photoUrl) formData.append('photoUrl', photoUrl);
 
     fetch('/api/posts', {method: 'POST', body: formData})
         .then(r => r.json())
-        .then(() => { showToast('发布成功', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('发布失败', 'error'));
+        .then(() => { showToast(status === 'DRAFT' ? '已存为草稿' : '发布成功', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
 }
 
 function submitComment(postId, replyToId) {
@@ -146,9 +154,12 @@ function submitComment(postId, replyToId) {
     if (replyToId) params += '&replyToId=' + replyToId;
 
     fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params})
-        .then(r => r.json())
+        .then(r => {
+            if (r.status === 403) return r.json().then(d => { throw new Error(d.reason || d.error || '无权评论'); });
+            return r.json();
+        })
         .then(() => { showToast('评论成功', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('评论失败', 'error'));
+        .catch(e => { showToast(e.message || '评论失败', 'error'); });
 }
 
 function setReply(commentId, userName) {
@@ -193,6 +204,33 @@ function rejectRequestOnProfile(id) {
     fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
         .then(r => r.json())
         .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+// 动态状态变更
+function changePostStatus(postId, newStatus) {
+    var formData = new FormData();
+    formData.append('status', newStatus);
+    fetch('/api/posts/' + postId + '/status', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(() => { showToast('状态已更新', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function changePostVisibility(postId, newVisibility) {
+    var formData = new FormData();
+    formData.append('visibility', newVisibility);
+    fetch('/api/posts/' + postId + '/visibility', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(() => { showToast('可见范围已更新', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function deletePost(postId) {
+    if (!confirm('确定删除此动态？')) return;
+    fetch('/api/posts/' + postId, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(() => { showToast('已删除', 'error'); setTimeout(() => location.reload(), 600); })
         .catch(() => showToast('操作失败', 'error'));
 }
 </script>

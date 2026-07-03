@@ -13,7 +13,6 @@
 
         <!-- 动态详情 -->
         <div class="card">
-            <!-- 发布人信息 -->
             <div class="feed-item" style="border-bottom:none;">
                 <div class="feed-header">
                     <a th:href="@{/profile/{id}(id=${author.id})}"><img th:src="${author.avatar}" alt=""></a>
@@ -27,6 +26,7 @@
                             </span>
                             <span style="margin-left:6px;" th:text="${author.relationshipStatus}">单身</span>
                             <span class="visibility-tag" th:classappend="${post.visibility.toString().toLowerCase()}" th:text="${post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
+                            <span class="status-tag" th:classappend="${post.status.toString().toLowerCase()}" th:if="${post.status != T(com.campus.model.PostStatus).PUBLISHED}" th:text="${post.status == T(com.campus.model.PostStatus).DRAFT} ? '草稿' : '已隐藏'"></span>
                         </div>
                     </div>
                 </div>
@@ -39,6 +39,10 @@
                     <div class="denied-actions">
                         <a href="/" class="btn btn-outline btn-sm">返回首页</a>
                         <a th:href="@{/profile/{id}(id=${author.id})}" class="btn btn-primary btn-sm">查看发布人主页</a>
+                        <!-- 非好友时显示加好友按钮 -->
+                        <button th:if="${authorRelationship == 'NONE'}" class="btn btn-success btn-sm" th:attr="onclick='sendRequest(' + ${author.id} + ', this)'">申请加好友</button>
+                        <span th:if="${authorRelationship == 'SENT'}" style="font-size:12px;color:#e65100;">已申请，等待回复</span>
+                        <span th:if="${authorRelationship == 'FRIEND'}" style="font-size:12px;color:#27ae60;">你们已是好友，但此动态不对你可见</span>
                     </div>
                 </div>
 
@@ -56,6 +60,18 @@
                         </span>
                         <span>&#128172; <span th:text="${commentCount}">0</span> 评论</span>
                     </div>
+                    <!-- 自己的动态操作 -->
+                    <div class="post-ops" th:if="${isOwner}">
+                        <select onchange="changePostVisibility(this.dataset.postId, this.value)" th:attr="data-post-id=${post.id}">
+                            <option value="PUBLIC" th:selected="${post.visibility == T(com.campus.model.Visibility).PUBLIC}">公开</option>
+                            <option value="FRIENDS" th:selected="${post.visibility == T(com.campus.model.Visibility).FRIENDS}">仅好友</option>
+                            <option value="PRIVATE" th:selected="${post.visibility == T(com.campus.model.Visibility).PRIVATE}">仅自己</option>
+                        </select>
+                        <button th:if="${post.status == T(com.campus.model.PostStatus).PUBLISHED}" class="btn btn-outline btn-sm" th:attr="onclick='changePostStatus(' + ${post.id} + ', &quot;HIDDEN&quot;)'">隐藏</button>
+                        <button th:if="${post.status == T(com.campus.model.PostStatus).HIDDEN}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${post.id} + ', &quot;PUBLISHED&quot;)'">恢复发布</button>
+                        <button th:if="${post.status == T(com.campus.model.PostStatus).DRAFT}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${post.id} + ', &quot;PUBLISHED&quot;)'">发布</button>
+                        <button class="btn btn-danger btn-sm" th:attr="onclick='deletePost(' + ${post.id} + ')'">删除</button>
+                    </div>
                 </th:block>
             </div>
         </div>
@@ -66,7 +82,6 @@
             <div class="card-body">
                 <div th:if="${#lists.isEmpty(topComments)}" style="color:#999;text-align:center;">暂无评论，来说点什么吧</div>
 
-                <!-- 顶级评论 + 回复 -->
                 <div class="comment-list">
                     <div th:each="ci : ${topComments}" class="comment-item">
                         <div class="comment-header">
@@ -77,7 +92,6 @@
                         <div class="comment-body" th:text="${ci.comment.content}">评论内容</div>
                         <div class="comment-reply-btn" th:attr="onclick='setReply(' + ${ci.comment.id} + ', &quot;' + ${ci.user.displayName} + '&quot;)'">回复</div>
 
-                        <!-- 楼中楼回复 -->
                         <div class="reply-list" th:if="${repliesMap.get(ci.comment.id) != null and !repliesMap.get(ci.comment.id).isEmpty()}">
                             <div th:each="reply : ${repliesMap.get(ci.comment.id)}" class="reply-item">
                                 <div class="comment-header">
@@ -93,7 +107,6 @@
                     </div>
                 </div>
 
-                <!-- 评论输入 -->
                 <div class="comment-form">
                     <input id="commentInput" type="text" placeholder="写下你的评论..." th:attr="data-post-id=${post.id}"
                            onkeydown="if(event.key==='Enter') submitCommentWithReply(this.dataset.postId)">

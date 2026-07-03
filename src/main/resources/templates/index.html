@@ -14,11 +14,17 @@
                 <textarea id="postContent" placeholder="分享你的校园生活..."></textarea>
                 <input type="text" id="postPhotoUrl" class="photo-url-input" placeholder="照片URL（可选，直接粘贴图片链接）">
                 <div class="publish-actions">
-                    <select id="postVisibility" class="visibility-select">
-                        <option value="PUBLIC">所有人可见</option>
-                        <option value="FRIENDS">仅好友可见</option>
-                        <option value="PRIVATE">仅自己可见</option>
-                    </select>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <select id="postVisibility" class="visibility-select">
+                            <option value="PUBLIC">所有人可见</option>
+                            <option value="FRIENDS">仅好友可见</option>
+                            <option value="PRIVATE">仅自己可见</option>
+                        </select>
+                        <select id="postStatus" class="status-select">
+                            <option value="PUBLISHED">直接发布</option>
+                            <option value="DRAFT">存为草稿</option>
+                        </select>
+                    </div>
                     <button class="btn btn-primary" onclick="publishPost()">发布</button>
                 </div>
             </div>
@@ -35,6 +41,7 @@
                         <div class="feed-meta">
                             <span th:text="${item.author.className}">班级</span>
                             <span class="visibility-tag" th:classappend="${item.post.visibility.toString().toLowerCase()}" th:text="${item.post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${item.post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
+                            <span class="status-tag" th:classappend="${item.post.status.toString().toLowerCase()}" th:if="${item.post.status != T(com.campus.model.PostStatus).PUBLISHED}" th:text="${item.post.status == T(com.campus.model.PostStatus).DRAFT} ? '草稿' : '已隐藏'"></span>
                         </div>
                     </div>
                 </div>
@@ -49,6 +56,18 @@
                         <span class="like-count" th:text="${item.likeCount}">0</span>
                     </span>
                     <a th:href="@{/post/{id}(id=${item.post.id})}">评论 (<span th:text="${item.commentCount}">0</span>)</a>
+                </div>
+                <!-- 自己的动态显示操作按钮 -->
+                <div class="post-ops" th:if="${item.post.userId == currentUserId}">
+                    <select onchange="changePostVisibility(this.dataset.postId, this.value)" th:attr="data-post-id=${item.post.id}">
+                        <option value="PUBLIC" th:selected="${item.post.visibility == T(com.campus.model.Visibility).PUBLIC}">公开</option>
+                        <option value="FRIENDS" th:selected="${item.post.visibility == T(com.campus.model.Visibility).FRIENDS}">仅好友</option>
+                        <option value="PRIVATE" th:selected="${item.post.visibility == T(com.campus.model.Visibility).PRIVATE}">仅自己</option>
+                    </select>
+                    <button th:if="${item.post.status == T(com.campus.model.PostStatus).PUBLISHED}" class="btn btn-outline btn-sm" th:attr="onclick='changePostStatus(' + ${item.post.id} + ', &quot;HIDDEN&quot;)'">隐藏</button>
+                    <button th:if="${item.post.status == T(com.campus.model.PostStatus).HIDDEN}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${item.post.id} + ', &quot;PUBLISHED&quot;)'">恢复</button>
+                    <button th:if="${item.post.status == T(com.campus.model.PostStatus).DRAFT}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${item.post.id} + ', &quot;PUBLISHED&quot;)'">发布</button>
+                    <button class="btn btn-danger btn-sm" th:attr="onclick='deletePost(' + ${item.post.id} + ')'">删除</button>
                 </div>
             </div>
             <div th:if="${#lists.isEmpty(feedItems)}" class="card-body" style="text-align:center;color:#999;">暂无动态</div>

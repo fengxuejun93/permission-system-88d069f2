@@ -12,6 +12,9 @@ a:hover { text-decoration: underline; }
 .top-nav .nav-links a.active { background: rgba(255,255,255,0.2); }
 .top-nav .user-info { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .top-nav .user-info img { width: 30px; height: 30px; border-radius: 50%; }
+.user-switcher { display: flex; align-items: center; }
+.user-select { padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15); color: #fff; font-size: 12px; cursor: pointer; outline: none; max-width: 200px; }
+.user-select option { color: #333; background: #fff; }
 .badge { background: #e74c3c; color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11px; margin-left: 4px; }
 
 /* 主布局 */
@@ -170,3 +173,18 @@ a:hover { text-decoration: underline; }
 /* 照片网格 */
 .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 10px; }
 .photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
+
+/* 动态状态标签 */
+.status-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; margin-left: 4px; }
+.status-tag.published { background: #e8f5e9; color: #2e7d32; }
+.status-tag.draft { background: #fff3e0; color: #e65100; }
+.status-tag.hidden { background: #f5f5f5; color: #999; }
+
+/* 动态操作区 */
+.post-ops { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.post-ops select { padding: 3px 6px; font-size: 12px; border: 1px solid #ddd; border-radius: 3px; }
+.post-ops .btn { font-size: 11px; padding: 2px 8px; }
+
+/* 发布区状态选择 */
+.status-select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+.publish-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 8px; flex-wrap: wrap; }

@@ -9,11 +9,13 @@ public class Post {
     private Long userId;
     private String content;
     private Visibility visibility;
+    private PostStatus status;
     private List<String> photoUrls;
     private LocalDateTime createdAt;
 
     public Post() {
         this.photoUrls = new ArrayList<>();
+        this.status = PostStatus.PUBLISHED;
     }
 
     public Post(Long id, Long userId, String content, Visibility visibility, List<String> photoUrls) {
@@ -21,6 +23,17 @@ public class Post {
         this.userId = userId;
         this.content = content;
         this.visibility = visibility;
+        this.status = PostStatus.PUBLISHED;
+        this.photoUrls = photoUrls != null ? photoUrls : new ArrayList<>();
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public Post(Long id, Long userId, String content, Visibility visibility, PostStatus status, List<String> photoUrls) {
+        this.id = id;
+        this.userId = userId;
+        this.content = content;
+        this.visibility = visibility;
+        this.status = status;
         this.photoUrls = photoUrls != null ? photoUrls : new ArrayList<>();
         this.createdAt = LocalDateTime.now();
     }
@@ -33,6 +46,8 @@ public class Post {
     public void setContent(String content) { this.content = content; }
     public Visibility getVisibility() { return visibility; }
     public void setVisibility(Visibility visibility) { this.visibility = visibility; }
+    public PostStatus getStatus() { return status; }
+    public void setStatus(PostStatus status) { this.status = status; }
     public List<String> getPhotoUrls() { return photoUrls; }
     public void setPhotoUrls(List<String> photoUrls) { this.photoUrls = photoUrls; }
     public LocalDateTime getCreatedAt() { return createdAt; }

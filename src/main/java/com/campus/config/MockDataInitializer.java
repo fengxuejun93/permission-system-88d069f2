@@ -49,7 +49,6 @@ public class MockDataInitializer implements CommandLineRunner {
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=avatar%20of%20a%20chinese%20college%20boy%20with%20cap%20headshot&image_size=square_hd",
                 "物理2023级1班", false, "恋爱中", "物理实验达人"));
 
-        // 当前登录用户：张三(id=1)
         // 好友关系：张三-李四(已通过), 张三-赵六(已通过)
         FriendRequest r1 = friendService.addRequest(2L, 1L);
         friendService.acceptRequest(r1.getId());
@@ -59,30 +58,39 @@ public class MockDataInitializer implements CommandLineRunner {
         // 待处理申请：王五申请加张三
         friendService.addRequest(3L, 1L);
 
-        // 模拟动态
+        // 模拟动态（PUBLISHED + 各种可见性）
         Post p1 = postService.createPost(new Post(null, 1L, "今天校园的樱花开了，好美！",
-                Visibility.PUBLIC, List.of(
+                Visibility.PUBLIC, PostStatus.PUBLISHED, List.of(
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=cherry%20blossom%20trees%20on%20a%20chinese%20university%20campus%20spring&image_size=landscape_16_9")));
 
         Post p2 = postService.createPost(new Post(null, 2L, "图书馆的自习室太抢手了，早上六点就满了 😤",
-                Visibility.PUBLIC, List.of()));
+                Visibility.PUBLIC, PostStatus.PUBLISHED, List.of()));
 
         Post p3 = postService.createPost(new Post(null, 4L, "新写了一个小项目，开心！仅好友可见哦~",
-                Visibility.FRIENDS, List.of(
+                Visibility.FRIENDS, PostStatus.PUBLISHED, List.of(
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=computer%20screen%20showing%20code%20on%20desk%20cozy%20room&image_size=landscape_16_9")));
 
         Post p4 = postService.createPost(new Post(null, 1L, "自己记录一下今天的心情日记。",
-                Visibility.PRIVATE, List.of()));
+                Visibility.PRIVATE, PostStatus.PUBLISHED, List.of()));
 
         Post p5 = postService.createPost(new Post(null, 5L, "物理实验终于通过了！",
-                Visibility.PUBLIC, List.of(
+                Visibility.PUBLIC, PostStatus.PUBLISHED, List.of(
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=physics%20laboratory%20experiment%20equipment%20university&image_size=landscape_16_9")));
 
         Post p6 = postService.createPost(new Post(null, 3L, "今天解了一道好难的积分题~仅好友可见",
-                Visibility.FRIENDS, List.of()));
+                Visibility.FRIENDS, PostStatus.PUBLISHED, List.of()));
 
-        Post p7 = postService.createPost(new Post(null, 5L, "周末实验室关门了，只有自己知道",
-                Visibility.PRIVATE, List.of()));
+        // 草稿动态
+        Post p7 = postService.createPost(new Post(null, 1L, "草稿：下周的社团活动计划，还没写完...",
+                Visibility.PUBLIC, PostStatus.DRAFT, List.of()));
+
+        Post p8 = postService.createPost(new Post(null, 2L, "草稿：读后感还没写完",
+                Visibility.FRIENDS, PostStatus.DRAFT, List.of()));
+
+        // 已隐藏动态
+        Post p9 = postService.createPost(new Post(null, 1L, "之前发的照片不太好看，先隐藏了",
+                Visibility.PUBLIC, PostStatus.HIDDEN, List.of(
+                "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=sunset%20over%20university%20campus%20building&image_size=landscape_16_9")));
 
         // 模拟点赞
         likeService.addInitialLike(p1.getId(), 2L);

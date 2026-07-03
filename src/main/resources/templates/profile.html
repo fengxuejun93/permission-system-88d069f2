@@ -26,7 +26,6 @@
                 </div>
                 <div class="profile-bio" th:if="${profileUser.bio}" th:text="${profileUser.bio}">签名</div>
 
-                <!-- 统计 -->
                 <div class="profile-stats">
                     <div class="profile-stat">
                         <div class="num" th:text="${totalPostCount}">0</div>
@@ -40,31 +39,22 @@
 
                 <!-- 好友关系操作 -->
                 <div class="profile-actions" th:if="${!isSelf}">
-                    <!-- 好友 -->
                     <span th:if="${relationship == 'FRIEND'}" style="color:#27ae60;font-size:14px;font-weight:600;">&#10003; 已互为好友</span>
-
-                    <!-- 无关系：可发送申请 -->
                     <button th:if="${relationship == 'NONE'}" class="btn btn-primary btn-sm" th:attr="onclick='sendRequest(' + ${profileUser.id} + ', this)'">加好友</button>
-
-                    <!-- 已发送申请 -->
                     <button th:if="${relationship == 'SENT'}" class="btn btn-sm btn-outline" disabled>已申请，等待回复</button>
-
-                    <!-- 收到申请：可同意/拒绝 -->
                     <div th:if="${relationship == 'RECEIVED'}" class="profile-request-actions">
                         <span style="font-size:13px;color:#e65100;">对方申请加你为好友</span>
                         <button th:if="${pendingRequest != null}" class="btn btn-success btn-sm" th:attr="onclick='acceptRequestOnProfile(' + ${pendingRequest.id} + ')'">同意</button>
                         <button th:if="${pendingRequest != null}" class="btn btn-danger btn-sm" th:attr="onclick='rejectRequestOnProfile(' + ${pendingRequest.id} + ')'">拒绝</button>
                     </div>
                 </div>
-
-                <!-- 自己的标记 -->
                 <div th:if="${isSelf}" style="margin-top:8px;">
                     <span style="font-size:13px;color:#888;">这是我的主页</span>
                 </div>
             </div>
         </div>
 
-        <!-- 照片墙（最近照片） -->
+        <!-- 照片墙 -->
         <div class="card" th:if="${hasPhotos}">
             <div class="card-header">照片</div>
             <div class="card-body">
@@ -76,8 +66,49 @@
             </div>
         </div>
 
-        <!-- 用户动态 -->
-        <div class="card">
+        <!-- 自己的主页：显示所有动态（含草稿和隐藏） -->
+        <div class="card" th:if="${isSelf and allPostItems != null}">
+            <div class="card-header">
+                我的动态管理
+                <span style="font-weight:normal;font-size:12px;color:#888;">（含草稿和已隐藏）</span>
+            </div>
+            <div th:each="pi : ${allPostItems}" class="feed-item">
+                <div class="feed-header">
+                    <img th:src="${profileUser.avatar}" alt="">
+                    <div class="feed-user-info">
+                        <span class="feed-user-name" th:text="${profileUser.displayName}">用户</span>
+                        <div class="feed-meta">
+                            <span class="visibility-tag" th:classappend="${pi.post.visibility.toString().toLowerCase()}" th:text="${pi.post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${pi.post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
+                            <span class="status-tag" th:classappend="${pi.post.status.toString().toLowerCase()}" th:text="${pi.post.status == T(com.campus.model.PostStatus).PUBLISHED} ? '已发布' : (${pi.post.status == T(com.campus.model.PostStatus).DRAFT} ? '草稿' : '已隐藏')"></span>
+                            <span style="margin-left:6px;" th:text="${#temporals.format(pi.post.createdAt, 'MM-dd HH:mm')}">时间</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="feed-content" th:text="${pi.post.content}">内容</div>
+                <div class="feed-photos" th:if="${pi.post.photoUrls.size() > 0}">
+                    <img th:each="url : ${pi.post.photoUrls}" th:src="${url}" alt="照片" loading="lazy" style="max-height:150px;width:auto;">
+                </div>
+                <div class="feed-actions">
+                    <span style="color:#888;font-size:12px;">&#9829; <span th:text="${pi.likeCount}">0</span></span>
+                    <a th:href="@{/post/{id}(id=${pi.post.id})}">评论 (<span th:text="${pi.commentCount}">0</span>)</a>
+                </div>
+                <!-- 操作区 -->
+                <div class="post-ops">
+                    <select onchange="changePostVisibility(this.dataset.postId, this.value)" th:attr="data-post-id=${pi.post.id}">
+                        <option value="PUBLIC" th:selected="${pi.post.visibility == T(com.campus.model.Visibility).PUBLIC}">公开</option>
+                        <option value="FRIENDS" th:selected="${pi.post.visibility == T(com.campus.model.Visibility).FRIENDS}">仅好友</option>
+                        <option value="PRIVATE" th:selected="${pi.post.visibility == T(com.campus.model.Visibility).PRIVATE}">仅自己</option>
+                    </select>
+                    <button th:if="${pi.post.status == T(com.campus.model.PostStatus).PUBLISHED}" class="btn btn-outline btn-sm" th:attr="onclick='changePostStatus(' + ${pi.post.id} + ', &quot;HIDDEN&quot;)'">隐藏</button>
+                    <button th:if="${pi.post.status == T(com.campus.model.PostStatus).HIDDEN}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${pi.post.id} + ', &quot;PUBLISHED&quot;)'">恢复</button>
+                    <button th:if="${pi.post.status == T(com.campus.model.PostStatus).DRAFT}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${pi.post.id} + ', &quot;PUBLISHED&quot;)'">发布</button>
+                    <button class="btn btn-danger btn-sm" th:attr="onclick='deletePost(' + ${pi.post.id} + ')'">删除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 他人主页：显示可见动态 -->
+        <div class="card" th:if="${!isSelf}">
             <div class="card-header">
                 动态
                 <span style="font-weight:normal;font-size:12px;color:#888;" th:text="'(可见 ' + ${postItems.size()} + ' 条)'"></span>
