@@ -18,6 +18,7 @@
             申请
             <span th:if="${pendingCount > 0}" class="badge" th:text="${pendingCount}">0</span>
         </a>
+        <a href="/debug" style="color:#e65100;" title="异常场景演示">调试</a>
     </div>
     <!-- 用户切换器 -->
     <div class="user-switcher">
@@ -128,28 +129,49 @@ function showToast(msg, type) {
     t.textContent = msg;
     document.body.appendChild(t);
     t.style.display = 'block';
-    setTimeout(function() { t.remove(); }, 2500);
+    setTimeout(function() { t.remove(); }, 3000);
+}
+
+// 通用 API 错误处理
+function handleApiError(r) {
+    if (r.ok) return r.json();
+    return r.json().then(d => {
+        var err = new Error(d.error || d.reason || '操作失败');
+        err.data = d;
+        err.status = r.status;
+        throw err;
+    });
 }
 
 function acceptRequest(id) {
     fetch('/api/friend-request/' + id + '/accept', {method: 'POST'})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function rejectRequest(id) {
     fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function sendRequest(toUserId, btn) {
     fetch('/api/friend-request?toUserId=' + toUserId, {method: 'POST'})
-        .then(r => { if(!r.ok) throw new Error(); return r.json(); })
-        .then(() => { showToast('好友申请已发送', 'success'); btn.textContent = '已申请'; btn.disabled = true; btn.className = 'btn btn-sm btn-outline'; })
-        .catch(() => showToast('操作失败', 'error'));
+        .then(r => handleApiError(r))
+        .then(d => {
+            if (d.error) {
+                showToast(d.error + (d.hint ? ' - ' + d.hint : ''), 'error');
+                if (d.status === 'RECEIVED') { btn.textContent = '待处理'; btn.disabled = true; btn.className = 'btn btn-sm btn-outline'; }
+                return;
+            }
+            showToast('好友申请已发送', 'success');
+            btn.textContent = '已申请';
+            btn.disabled = true;
+            btn.className = 'btn btn-sm btn-outline';
+        })
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function publishPost() {
@@ -166,26 +188,26 @@ function publishPost() {
     if (photoUrl) formData.append('photoUrl', photoUrl);
 
     fetch('/api/posts', {method: 'POST', body: formData})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast(status === 'DRAFT' ? '已存为草稿' : '发布成功', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '发布失败', 'error'); });
 }
 
 function submitComment(postId, replyToId) {
     var input = document.getElementById('commentInput');
     var content = input.value.trim();
-    if (!content) return;
+    if (!content) { showToast('请输入评论内容', 'error'); return; }
 
     var params = 'content=' + encodeURIComponent(content);
     if (replyToId) params += '&replyToId=' + replyToId;
 
     fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params})
-        .then(r => {
-            if (r.status === 403) return r.json().then(d => { throw new Error(d.reason || d.error || '无权评论'); });
-            return r.json();
-        })
+        .then(r => handleApiError(r))
         .then(() => { showToast('评论成功', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(e => { showToast(e.message || '评论失败', 'error'); });
+        .catch(e => {
+            var hint = e.data ? (e.data.hint || e.data.reason || e.message) : e.message;
+            showToast(hint, 'error');
+        });
 }
 
 function setReply(commentId, userName) {
@@ -205,7 +227,7 @@ function submitCommentWithReply(postId) {
 
 function toggleLike(postId, el) {
     fetch('/api/posts/' + postId + '/like', {method: 'POST'})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(data => {
             var countEl = el.querySelector('.like-count') || el.parentElement.querySelector('.like-count');
             if (data.liked) {
@@ -216,48 +238,53 @@ function toggleLike(postId, el) {
                 if (countEl) countEl.textContent = data.likeCount;
             }
         })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function acceptRequestOnProfile(id) {
     fetch('/api/friend-request/' + id + '/accept', {method: 'POST'})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function rejectRequestOnProfile(id) {
     fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
-// 动态状态变更
 function changePostStatus(postId, newStatus) {
     var formData = new FormData();
     formData.append('status', newStatus);
     fetch('/api/posts/' + postId + '/status', {method: 'POST', body: formData})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('状态已更新', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function changePostVisibility(postId, newVisibility) {
     var formData = new FormData();
     formData.append('visibility', newVisibility);
     fetch('/api/posts/' + postId + '/visibility', {method: 'POST', body: formData})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('可见范围已更新', 'success'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => {
+            if (e.data && e.data.retry) {
+                showToast(e.data.error + ' - ' + e.data.hint, 'error');
+            } else {
+                showToast(e.data ? e.data.hint || e.message : '操作失败', 'error');
+            }
+        });
 }
 
 function deletePost(postId) {
     if (!confirm('确定删除此动态？')) return;
     fetch('/api/posts/' + postId, {method: 'DELETE'})
-        .then(r => r.json())
+        .then(r => handleApiError(r))
         .then(() => { showToast('已删除', 'error'); setTimeout(() => location.reload(), 600); })
-        .catch(() => showToast('操作失败', 'error'));
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 </script>
 

@@ -17,9 +17,11 @@ public class FriendService {
         for (FriendRequest r : requests.values()) {
             if ((r.getFromUserId().equals(fromUserId) && r.getToUserId().equals(toUserId))
                     || (r.getFromUserId().equals(toUserId) && r.getToUserId().equals(fromUserId))) {
-                if (r.getStatus() == FriendRequest.Status.ACCEPTED) return r;
-                if (r.getStatus() == FriendRequest.Status.PENDING) return r;
+                return r; // 返回已有记录，让调用方根据status判断
             }
+        }
+        if (fromUserId.equals(toUserId)) {
+            return null; // 不能加自己为好友
         }
         FriendRequest req = new FriendRequest(idGenerator.incrementAndGet(), fromUserId, toUserId, FriendRequest.Status.PENDING);
         requests.put(req.getId(), req);

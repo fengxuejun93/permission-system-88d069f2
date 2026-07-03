@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('异常演示 - 校内网')}"></head>
+<body>
+<nav th:replace="~{fragments :: topnav('home')}"></nav>
+
+<div class="main-container">
+    <aside th:replace="~{fragments :: sidebar}"></aside>
+
+    <div class="content">
+        <a href="/" class="back-link">&larr; 返回首页</a>
+
+        <div class="card">
+            <div class="card-header">异常场景演示 / 调试区</div>
+            <div class="card-body" style="font-size:13px;line-height:1.8;">
+                <p style="color:#888;margin-bottom:12px;">此页面仅用于验证异常反馈和可恢复机制，不影响正常业务路径。每个按钮触发一种异常场景，页面会显示对应的用户反馈。</p>
+
+                <h4 style="margin:16px 0 8px;color:#3b5998;">1. 动态相关异常</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="triggerDeletedPost()">查看已删除动态</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerHiddenPost()">隐藏自己的动态后查看</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerEmptyContent()">发布空内容动态</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerDuplicateStatus()">重复设置相同状态</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerDuplicateVisibility()">重复设置相同可见范围</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerNoPhotoPost()">查看无照片动态的照片区</button>
+                </div>
+
+                <h4 style="margin:16px 0 8px;color:#3b5998;">2. 好友申请异常</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="triggerDuplicateRequest()">重复发送好友申请</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerAcceptAgain()">同意已处理的申请</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerRejectAgain()">拒绝已处理的申请</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerSelfRequest()">加自己为好友</button>
+                </div>
+
+                <h4 style="margin:16px 0 8px;color:#3b5998;">3. 评论权限异常</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="triggerEmptyComment()">提交空评论</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerCommentOnHidden()">评论已隐藏的动态</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerCommentOnPrivate()">评论无权限动态</button>
+                </div>
+
+                <h4 style="margin:16px 0 8px;color:#3b5998;">4. 筛选无结果</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <a href="/?visibility=PRIVATE&status=DRAFT" class="btn btn-outline btn-sm">筛选仅自己可见+草稿（可能无结果）</a>
+                    <a href="/?authorId=999" class="btn btn-outline btn-sm">筛选不存在的作者</a>
+                </div>
+
+                <h4 style="margin:16px 0 8px;color:#3b5998;">5. 视角切换验证</h4>
+                <div style="color:#666;margin-bottom:8px;">切换到非好友视角（如王五），然后访问仅好友可见的动态详情页，验证权限提示和"申请好友"入口。</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <span style="font-size:12px;color:#888;">步骤：1) 用顶部下拉切换到王五 → 2) 找到赵六的"仅好友可见"动态 → 3) 点击进入详情 → 4) 验证权限提示和加好友按钮</span>
+                </div>
+
+                <hr style="margin:16px 0;border-color:#eee;">
+
+                <h4 style="margin:12px 0 8px;color:#3b5998;">当前用户动态ID参考</h4>
+                <div style="color:#666;font-size:12px;">
+                    <div th:each="p : ${myPosts}" style="padding:2px 0;">
+                        <span th:text="'动态 #' + ${p.id}"></span>:
+                        <span th:text="${p.content.length() > 30 ? p.content.substring(0,30)+'...' : p.content}"></span>
+                        <span class="visibility-tag" th:classappend="${p.visibility.toString().toLowerCase()}" th:text="${p.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${p.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')" style="font-size:10px;"></span>
+                        <span class="status-tag" th:classappend="${p.status.toString().toLowerCase()}" th:text="${p.status == T(com.campus.model.PostStatus).PUBLISHED} ? '已发布' : (${p.status == T(com.campus.model.PostStatus).DRAFT} ? '草稿' : '已隐藏')" style="font-size:10px;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:replace="~{fragments :: scripts}"></script>
+<script>
+// 动态相关异常
+function triggerDeletedPost() {
+    window.open('/post/99999', '_blank');
+}
+
+function triggerHiddenPost() {
+    // 找到自己的第一条动态，隐藏它，然后在新窗口打开
+    var myPosts = document.querySelectorAll('[data-post-id]');
+    if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
+    var firstId = myPosts[0].dataset.postId;
+    fetch('/api/posts/' + firstId + '/status', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'status=HIDDEN'})
+        .then(r => handleApiError(r))
+        .then(() => {
+            showToast('动态已隐藏，3秒后打开详情页验证', 'success');
+            setTimeout(() => { window.open('/post/' + firstId, '_blank'); }, 3000);
+        })
+        .catch(e => showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'));
+}
+
+function triggerEmptyContent() {
+    fetch('/api/posts', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'content=&visibility=PUBLIC&status=PUBLISHED'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerDuplicateStatus() {
+    // 找到自己的第一条已发布动态，再设为PUBLISHED
+    var myPosts = document.querySelectorAll('[data-post-id]');
+    if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
+    var firstId = myPosts[0].dataset.postId;
+    fetch('/api/posts/' + firstId + '/status', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'status=PUBLISHED'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerDuplicateVisibility() {
+    var myPosts = document.querySelectorAll('[data-post-id]');
+    if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
+    var firstId = myPosts[0].dataset.postId;
+    fetch('/api/posts/' + firstId + '/visibility', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'visibility=PUBLIC'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerNoPhotoPost() {
+    // 找一条没有照片的动态进入详情查看
+    var links = document.querySelectorAll('a[href*="/post/"]');
+    for (var i = 0; i < links.length; i++) {
+        var l = links[i];
+        var feedItem = l.closest('.feed-item');
+        if (feedItem && !feedItem.querySelector('.feed-photos img')) {
+            window.open(l.href, '_blank');
+            return;
+        }
+    }
+    showToast('没有找到无照片的动态', 'error');
+}
+
+// 好友申请异常
+function triggerDuplicateRequest() {
+    fetch('/api/friend-request?toUserId=2', {method: 'POST'})
+        .then(r => handleApiError(r))
+        .then(d => {
+            if (d.error) { showToast(d.error + (d.hint ? ' - ' + d.hint : ''), 'error'); }
+            else { showToast('申请已发送，再次点击触发重复', 'success'); }
+        })
+        .catch(e => showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'));
+}
+
+function triggerAcceptAgain() {
+    // 同意ID=101的申请（已处理的），触发"已处理"反馈
+    fetch('/api/friend-request/101/accept', {method: 'POST'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerRejectAgain() {
+    fetch('/api/friend-request/101/reject', {method: 'POST'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerSelfRequest() {
+    fetch('/api/friend-request?toUserId=' + document.querySelector('.user-select')?.value || '1', {method: 'POST'})
+        .then(r => handleApiError(r))
+        .then(d => {
+            if (d.error) showToast(d.error + (d.hint ? ' - ' + d.hint : ''), 'error');
+        })
+        .catch(e => showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'));
+}
+
+// 评论权限异常
+function triggerEmptyComment() {
+    // 找当前页面第一条动态
+    var links = document.querySelectorAll('a[href*="/post/"]');
+    if (links.length === 0) { showToast('没有动态', 'error'); return; }
+    var postId = links[0].href.match(/\/post\/(\d+)/)[1];
+    fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'content='})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerCommentOnHidden() {
+    // 找自己的已隐藏动态，尝试评论
+    var myPosts = document.querySelectorAll('[data-post-id]');
+    if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
+    var firstId = myPosts[0].dataset.postId;
+    // 先隐藏
+    fetch('/api/posts/' + firstId + '/status', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'status=HIDDEN'})
+        .then(r => handleApiError(r))
+        .then(() => {
+            return fetch('/api/posts/' + firstId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'content=test'});
+        })
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+function triggerCommentOnPrivate() {
+    // 找一条PRIVATE动态尝试评论（需要是非作者视角）
+    var links = document.querySelectorAll('a[href*="/post/"]');
+    if (links.length === 0) { showToast('没有动态', 'error'); return; }
+    // 尝试评论第一条动态（如果不是自己的就会触发权限错误）
+    var postId = links[0].href.match(/\/post\/(\d+)/)[1];
+    fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'content=test'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('评论成功（此动态对你可见）', 'success'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + (e.data.reason || e.data.hint) : e.message, 'error'));
+}
+</script>
+</body>
+</html>

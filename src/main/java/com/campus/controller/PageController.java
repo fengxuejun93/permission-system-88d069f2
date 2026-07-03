@@ -114,7 +114,12 @@ public class PageController {
 
         Long uid = currentUserId();
         Post post = postService.findById(id);
-        if (post == null) return "redirect:/";
+        if (post == null) {
+            model.addAttribute("postNotFound", true);
+            return "post-detail";
+        }
+
+        model.addAttribute("postNotFound", false);
 
         Set<Long> friendIds = friendService.getFriendIds(uid);
         boolean visible = isPostVisible(post, uid, friendIds);
@@ -197,6 +202,7 @@ public class PageController {
 
     @GetMapping("/profile/{id}")
     public String profile(@PathVariable Long id, Model model) {
+
         addCommonAttributes(model);
 
         Long uid = currentUserId();
@@ -256,6 +262,20 @@ public class PageController {
         model.addAttribute("profileFriendCount", profileFriendCount);
         model.addAttribute("pendingRequest", pendingReq);
         return "profile";
+    }
+
+    @GetMapping("/debug")
+    public String debug(Model model) {
+        addCommonAttributes(model);
+        Long uid = currentUserId();
+        Set<Long> friendIds = friendService.getFriendIds(uid);
+
+        // 获取一些数据用于调试页
+        List<Post> allPosts = postService.getVisiblePosts(uid, friendIds);
+        List<Post> myPosts = postService.getAllPostsByUser(uid);
+        model.addAttribute("allVisiblePosts", allPosts);
+        model.addAttribute("myPosts", myPosts);
+        return "debug";
     }
 
     private boolean isPostVisible(Post p, Long currentUserId, Set<Long> friendIds) {

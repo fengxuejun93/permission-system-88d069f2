@@ -11,8 +11,20 @@
         <!-- 返回链接 -->
         <a href="/" class="back-link">&larr; 返回动态列表</a>
 
+        <!-- 动态不存在 -->
+        <div class="card" th:if="${postNotFound}">
+            <div class="access-denied">
+                <div class="lock-icon">&#128465;</div>
+                <div class="denied-title">动态不存在</div>
+                <div class="denied-reason">该动态可能已被发布者删除，或链接地址有误</div>
+                <div class="denied-actions">
+                    <a href="/" class="btn btn-primary btn-sm">返回首页</a>
+                </div>
+            </div>
+        </div>
+
         <!-- 动态详情 -->
-        <div class="card">
+        <div class="card" th:if="${!postNotFound}">
             <div class="feed-item" style="border-bottom:none;">
                 <div class="feed-header">
                     <a th:href="@{/profile/{id}(id=${author.id})}"><img th:src="${author.avatar}" alt=""></a>
@@ -77,7 +89,7 @@
         </div>
 
         <!-- 评论区（仅可见时显示） -->
-        <div class="card" th:if="${!accessDenied}">
+        <div class="card" th:if="${!postNotFound and !accessDenied}">
             <div class="card-header">评论 (<span th:text="${commentCount}">0</span>)</div>
             <div class="card-body">
                 <div th:if="${#lists.isEmpty(topComments)}" style="color:#999;text-align:center;">暂无评论，来说点什么吧</div>
