@@ -99,6 +99,19 @@
                         </div>
                     </div>
                 </div>
+                <!-- 管理员无待处理项 -->
+                <div th:if="${adminHiddenPosts.isEmpty() and isAdmin}" class="empty-state" style="padding:16px 0;">
+                    <div class="empty-icon">&#9989;</div>
+                    <div class="empty-title">没有待处理的异常内容</div>
+                    <div class="empty-desc">所有动态状态正常，没有被隐藏的动态需要管理员处理</div>
+                    <div class="empty-actions">
+                        <a href="/" class="btn btn-outline btn-sm">返回首页</a>
+                    </div>
+                </div>
+                <!-- 非管理员提示 -->
+                <div th:if="${adminHiddenPosts.isEmpty() and !isAdmin}" style="margin-top:12px;padding:10px;background:#f5f5f5;border-radius:6px;font-size:12px;color:#888;">
+                    管理员视角的隐藏动态仅对管理员可见。切换到管理员身份可查看。
+                </div>
             </div>
         </div>
     </div>

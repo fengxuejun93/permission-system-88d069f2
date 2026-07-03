@@ -101,9 +101,16 @@
         <div class="card" th:if="${!postNotFound and !accessDenied}">
             <div class="card-header">评论 (<span th:text="${commentCount}">0</span>)</div>
             <div class="card-body">
-                <div th:if="${#lists.isEmpty(topComments)}" style="color:#999;text-align:center;">暂无评论，来说点什么吧</div>
+                <!-- 评论区为空时的空状态 -->
+                <div th:if="${#lists.isEmpty(topComments)}" class="empty-state" style="padding:20px;">
+                    <div class="empty-icon">&#128172;</div>
+                    <div class="empty-title" th:if="${isOwner}">还没有人评论</div>
+                    <div class="empty-desc" th:if="${isOwner}">来说点什么吧，给自己的动态添点人气</div>
+                    <div class="empty-title" th:if="${!isOwner}">暂无评论</div>
+                    <div class="empty-desc" th:if="${!isOwner}">成为第一个评论的人</div>
+                </div>
 
-                <div class="comment-list">
+                <div th:if="${!#lists.isEmpty(topComments)}" class="comment-list">
                     <div th:each="ci : ${topComments}" class="comment-item">
                         <div class="comment-header">
                             <a th:href="@{/profile/{id}(id=${ci.user.id})}"><img th:src="${ci.user.avatar}" alt=""></a>

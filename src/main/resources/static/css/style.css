@@ -228,3 +228,8 @@ a:hover { text-decoration: underline; }
 /* 评论删除按钮 */
 .comment-delete-btn { font-size: 11px; color: #e74c3c; cursor: pointer; margin-left: 8px; }
 .comment-delete-btn:hover { text-decoration: underline; color: #c0392b; }
+
+/* 空状态筛选摘要 */
+.empty-filter-summary { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 8px 0 12px; }
+.empty-filter-tag { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: #f0f0f0; color: #666; }
+.empty-filter-tag b { color: #3b5998; }

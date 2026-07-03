@@ -132,13 +132,40 @@
             </div>
             <!-- 空状态 -->
             <div th:if="${#lists.isEmpty(feedItems)}" class="card-body empty-state">
-                <div class="empty-icon">&#128269;</div>
-                <div class="empty-title">无匹配的动态</div>
-                <div class="empty-desc">尝试调整搜索或筛选条件</div>
-                <div class="empty-actions">
-                    <a href="/" class="btn btn-outline btn-sm">清除筛选，返回全部</a>
-                    <a href="/friends" class="btn btn-primary btn-sm">去好友页申请好友</a>
-                </div>
+                <!-- 有筛选条件时的空状态 -->
+                <th:block th:if="${filterKeyword != null or filterVisibility != null or filterStatus != null or filterAuthorId != null or filterRelationship != null or filterHasComment != null}">
+                    <div class="empty-icon">&#128269;</div>
+                    <div class="empty-title">没有匹配筛选条件的动态</div>
+                    <div class="empty-desc">当前筛选口径下无结果，试试调整条件</div>
+                    <div class="empty-filter-summary">
+                        <span th:if="${filterKeyword}" class="empty-filter-tag">关键词: <b th:text="${filterKeyword}"></b></span>
+                        <span th:if="${filterVisibility}" class="empty-filter-tag">可见范围: <b th:text="${filterVisibility}"></b></span>
+                        <span th:if="${filterStatus}" class="empty-filter-tag">状态: <b th:text="${filterStatus}"></b></span>
+                        <span th:if="${filterRelationship}" class="empty-filter-tag">关系: <b th:text="${filterRelationship}"></b></span>
+                        <span th:if="${filterHasComment}" class="empty-filter-tag">评论: <b th:text="${filterHasComment == 'yes'} ? '有' : '无'"></b></span>
+                    </div>
+                    <div class="empty-actions">
+                        <a href="/" class="btn btn-primary btn-sm">清除筛选，返回全部</a>
+                        <a th:href="@{/friends(group='stranger')}" class="btn btn-outline btn-sm">去发现同学</a>
+                    </div>
+                </th:block>
+                <!-- 无筛选条件但无可见动态（权限/新用户） -->
+                <th:block th:if="${filterKeyword == null and filterVisibility == null and filterStatus == null and filterAuthorId == null and filterRelationship == null and filterHasComment == null}">
+                    <div class="empty-icon">&#128196;</div>
+                    <!-- 本人且无动态 -->
+                    <div class="empty-title" th:if="${stats.postCount == 0}">你还没有发布动态</div>
+                    <div class="empty-desc" th:if="${stats.postCount == 0}">发布你的第一条校园动态，分享照片和心情</div>
+                    <div class="empty-actions" th:if="${stats.postCount == 0}">
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('postContent').focus()">发布动态</button>
+                    </div>
+                    <!-- 有动态但不可见（权限不足） -->
+                    <div class="empty-title" th:if="${stats.postCount > 0}">暂无可见的动态</div>
+                    <div class="empty-desc" th:if="${stats.postCount > 0}">当前视角下没有可查看的动态，尝试添加好友或切换身份</div>
+                    <div class="empty-actions" th:if="${stats.postCount > 0}">
+                        <a href="/friends" class="btn btn-primary btn-sm">去好友页申请好友</a>
+                        <a href="/friends" class="btn btn-outline btn-sm">切换当前用户</a>
+                    </div>
+                </th:block>
             </div>
         </div>
     </div>

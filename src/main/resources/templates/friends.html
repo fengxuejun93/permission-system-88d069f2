@@ -58,8 +58,8 @@
                     <div class="empty-title" th:if="${filterKeyword != null or filterOnline != null}">没有匹配的好友</div>
                     <div class="empty-desc" th:if="${filterKeyword != null or filterOnline != null}">尝试调整搜索或筛选条件</div>
                     <div class="empty-actions" th:if="${filterKeyword != null or filterOnline != null}">
-                        <a href="/friends" class="btn btn-outline btn-sm">清除筛选，返回全部</a>
-                        <a th:href="@{/friends(group='stranger')}" class="btn btn-primary btn-sm">去发现同学</a>
+                        <a href="/friends" class="btn btn-primary btn-sm">清除筛选，返回全部</a>
+                        <a th:href="@{/friends(group='stranger')}" class="btn btn-outline btn-sm">去发现同学</a>
                     </div>
                     <div class="empty-title" th:if="${filterKeyword == null and filterOnline == null}">还没有好友</div>
                     <div class="empty-desc" th:if="${filterKeyword == null and filterOnline == null}">去发现同学，添加好友吧</div>
@@ -92,10 +92,14 @@
                     <div class="empty-icon">&#128236;</div>
                     <div class="empty-title" th:if="${filterKeyword != null}">没有匹配的申请</div>
                     <div class="empty-desc" th:if="${filterKeyword != null}">尝试调整搜索条件</div>
+                    <div class="empty-actions" th:if="${filterKeyword != null}">
+                        <a th:href="@{/friends(group='pending')}" class="btn btn-outline btn-sm">清除筛选</a>
+                    </div>
                     <div class="empty-title" th:if="${filterKeyword == null}">暂无待处理申请</div>
-                    <div class="empty-desc" th:if="${filterKeyword == null}">所有申请都已处理</div>
-                    <div class="empty-actions">
+                    <div class="empty-desc" th:if="${filterKeyword == null}">所有申请都已处理，或者还没有人向你发送好友申请</div>
+                    <div class="empty-actions" th:if="${filterKeyword == null}">
                         <a href="/friends" class="btn btn-outline btn-sm">返回全部</a>
+                        <a th:href="@{/friends(group='stranger')}" class="btn btn-primary btn-sm">主动去发现同学</a>
                     </div>
                 </div>
                 <div th:each="req : ${receivedRequests}" class="request-item">

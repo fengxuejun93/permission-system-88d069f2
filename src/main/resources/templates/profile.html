@@ -57,13 +57,27 @@
         </div>
 
         <!-- 照片墙 -->
-        <div class="card" th:if="${hasPhotos}">
+        <div class="card">
             <div class="card-header">照片</div>
             <div class="card-body">
-                <div class="photo-grid">
+                <div th:if="${hasPhotos}" class="photo-grid">
                     <a th:each="pi : ${postItems}" th:if="${!pi.post.photoUrls.isEmpty()}" th:href="@{/post/{id}(id=${pi.post.id})}">
                         <img th:each="url : ${pi.post.photoUrls}" th:src="${url}" alt="照片" loading="lazy">
                     </a>
+                </div>
+                <!-- 无照片空状态 -->
+                <div th:if="${!hasPhotos}" class="empty-state">
+                    <div class="empty-icon">&#128247;</div>
+                    <div class="empty-title" th:if="${isSelf}">你还没有照片动态</div>
+                    <div class="empty-desc" th:if="${isSelf}">发布一条带照片的动态，展示你的校园生活</div>
+                    <div class="empty-actions" th:if="${isSelf}">
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('postContent').focus()">发布照片动态</button>
+                    </div>
+                    <div class="empty-title" th:if="${!isSelf}">暂无照片</div>
+                    <div class="empty-desc" th:if="${!isSelf}">该用户还没有发布带照片的动态</div>
+                    <div class="empty-actions" th:if="${!isSelf}">
+                        <a th:href="@{/profile/{id}(id=${profileUser.id})}" class="btn btn-outline btn-sm">回到个人主页</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -73,6 +87,14 @@
             <div class="card-header">
                 我的动态管理
                 <span style="font-weight:normal;font-size:12px;color:#888;">（含草稿和已隐藏）</span>
+            </div>
+            <div th:if="${#lists.isEmpty(allPostItems)}" class="card-body empty-state">
+                <div class="empty-icon">&#128221;</div>
+                <div class="empty-title">你还没有任何动态</div>
+                <div class="empty-desc">发布你的第一条动态，分享校园生活</div>
+                <div class="empty-actions">
+                    <button class="btn btn-primary btn-sm" onclick="window.location.href='/'">去首页发布动态</button>
+                </div>
             </div>
             <div th:each="pi : ${allPostItems}" class="feed-item">
                 <div class="feed-header">
@@ -142,7 +164,32 @@
                     <button class="btn btn-success btn-sm" th:attr="onclick='adminRestorePost(' + ${pi.post.id} + ')'">恢复此动态</button>
                 </div>
             </div>
-            <div th:if="${#lists.isEmpty(postItems)}" class="card-body" style="text-align:center;color:#999;">暂无可见动态</div>
+            <div th:if="${#lists.isEmpty(postItems)}" class="card-body empty-state">
+                <div class="empty-icon">&#128196;</div>
+                <div class="empty-title" th:if="${relationship == 'FRIEND'}">好友暂无可见动态</div>
+                <div class="empty-desc" th:if="${relationship == 'FRIEND'}">该好友可能只发布了私密动态，你可以去看看其他好友的动态</div>
+                <div class="empty-actions" th:if="${relationship == 'FRIEND'}">
+                    <a href="/" class="btn btn-outline btn-sm">返回全部动态</a>
+                    <a href="/friends" class="btn btn-primary btn-sm">查看好友列表</a>
+                </div>
+                <div class="empty-title" th:if="${relationship == 'NONE'}">无法查看该用户的动态</div>
+                <div class="empty-desc" th:if="${relationship == 'NONE'}">你们还不是好友，该用户的动态仅对好友可见。申请加好友后即可查看</div>
+                <div class="empty-actions" th:if="${relationship == 'NONE'}">
+                    <button class="btn btn-primary btn-sm" th:attr="onclick='sendRequest(' + ${profileUser.id} + ', this)'">申请加好友</button>
+                    <a href="/" class="btn btn-outline btn-sm">返回首页</a>
+                </div>
+                <div class="empty-title" th:if="${relationship == 'SENT'}">已申请，等待对方通过</div>
+                <div class="empty-desc" th:if="${relationship == 'SENT'}">对方通过后，你就可以查看其好友可见的动态了</div>
+                <div class="empty-actions" th:if="${relationship == 'SENT'}">
+                    <a href="/" class="btn btn-outline btn-sm">返回首页</a>
+                </div>
+                <div class="empty-title" th:if="${relationship == 'RECEIVED'}">对方已申请加你为好友</div>
+                <div class="empty-desc" th:if="${relationship == 'RECEIVED'}">同意申请后，你们就可以互相查看好友可见的动态</div>
+                <div class="empty-actions" th:if="${relationship == 'RECEIVED'}">
+                    <button th:if="${pendingRequest != null}" class="btn btn-success btn-sm" th:attr="onclick='acceptRequestOnProfile(' + ${pendingRequest.id} + ')'">同意申请</button>
+                    <a href="/" class="btn btn-outline btn-sm">返回首页</a>
+                </div>
+            </div>
         </div>
 
         <!-- 管理员视角：被隐藏的动态（非PRIVATE） -->
