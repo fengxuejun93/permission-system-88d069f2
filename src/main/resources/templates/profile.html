@@ -71,7 +71,7 @@
                     <div class="empty-title" th:if="${isSelf}">你还没有照片动态</div>
                     <div class="empty-desc" th:if="${isSelf}">发布一条带照片的动态，展示你的校园生活</div>
                     <div class="empty-actions" th:if="${isSelf}">
-                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('postContent').focus()">发布照片动态</button>
+                        <a href="/" class="btn btn-primary btn-sm">去首页发布照片动态</a>
                     </div>
                     <div class="empty-title" th:if="${!isSelf}">暂无照片</div>
                     <div class="empty-desc" th:if="${!isSelf}">该用户还没有发布带照片的动态</div>

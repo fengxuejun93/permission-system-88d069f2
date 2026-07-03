@@ -175,7 +175,7 @@
                         <button th:if="${du.relationship == 'SENT'}" class="btn btn-sm btn-outline" disabled>已申请</button>
                         <span th:if="${du.relationship == 'RECEIVED'}" style="display:flex;gap:4px;align-items:center;">
                             <span style="font-size:12px;color:#e65100;">对方已申请</span>
-                            <a th:href="@{/profile/{id}(id=${du.user.id})}" class="btn btn-success btn-sm">去处理</a>
+                            <a href="/friends?group=pending" class="btn btn-success btn-sm">去处理</a>
                         </span>
                     </div>
                 </div>
@@ -248,7 +248,7 @@
                             <button th:if="${du.relationship == 'SENT'}" class="btn btn-sm btn-outline" disabled>已申请</button>
                             <span th:if="${du.relationship == 'RECEIVED'}" style="display:flex;gap:4px;align-items:center;">
                                 <span style="font-size:12px;color:#e65100;">对方已申请</span>
-                                <a th:href="@{/profile/{id}(id=${du.user.id})}" class="btn btn-success btn-sm">去处理</a>
+                                <a href="/friends?group=pending" class="btn btn-success btn-sm">去处理</a>
                             </span>
                         </div>
                     </div>

@@ -177,9 +177,8 @@ function sendRequest(toUserId, btn) {
                 return;
             }
             showToast('好友申请已发送', 'success');
-            btn.textContent = '已申请';
-            btn.disabled = true;
-            btn.className = 'btn btn-sm btn-outline';
+            // 刷新页面以同步统计数字和关系状态
+            setTimeout(() => reloadWithFilters(), 600);
         })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
@@ -213,7 +212,12 @@ function submitComment(postId, replyToId) {
 
     fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params})
         .then(r => handleApiError(r))
-        .then(() => { showToast('评论成功', 'success'); setTimeout(() => reloadWithFilters(), 600); })
+        .then(() => {
+            showToast('评论成功', 'success');
+            input.value = '';
+            delete input.dataset.replyTo;
+            setTimeout(() => reloadWithFilters(), 600);
+        })
         .catch(e => {
             var hint = e.data ? (e.data.hint || e.data.reason || e.message) : e.message;
             showToast(hint, 'error');

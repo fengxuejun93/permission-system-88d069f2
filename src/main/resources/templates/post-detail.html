@@ -58,7 +58,7 @@
                         <a th:href="@{/profile/{id}(id=${author.id})}" class="btn btn-primary btn-sm">查看发布人主页</a>
                         <button th:if="${authorRelationship == 'NONE'}" class="btn btn-success btn-sm" th:attr="onclick='sendRequest(' + ${author.id} + ', this)'">申请加好友</button>
                         <span th:if="${authorRelationship == 'SENT'}" style="font-size:12px;color:#e65100;">已申请，等待回复</span>
-                        <span th:if="${authorRelationship == 'RECEIVED'}" style="font-size:12px;color:#e65100;">对方已申请加你，去好友页处理</span>
+                        <a th:if="${authorRelationship == 'RECEIVED'}" href="/friends?group=pending" class="btn btn-success btn-sm">对方已申请，去处理</a>
                         <span th:if="${authorRelationship == 'FRIEND'}" style="font-size:12px;color:#27ae60;">你们已是好友，但此动态不对你可见</span>
                     </div>
                 </div>

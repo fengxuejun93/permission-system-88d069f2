@@ -163,7 +163,7 @@
                     <div class="empty-desc" th:if="${stats.postCount > 0}">当前视角下没有可查看的动态，尝试添加好友或切换身份</div>
                     <div class="empty-actions" th:if="${stats.postCount > 0}">
                         <a href="/friends" class="btn btn-primary btn-sm">去好友页申请好友</a>
-                        <a href="/friends" class="btn btn-outline btn-sm">切换当前用户</a>
+                        <span class="btn btn-outline btn-sm" style="cursor:default;">可在顶部下拉切换身份</span>
                     </div>
                 </th:block>
             </div>
