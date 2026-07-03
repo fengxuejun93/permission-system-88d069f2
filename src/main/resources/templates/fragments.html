@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">校园社交</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<nav th:fragment="topnav(currentPage)" class="top-nav">
+    <a href="/" class="logo">校内网</a>
+    <div class="nav-links">
+        <a href="/" th:classappend="${currentPage == 'home'} ? 'active'">首页</a>
+        <a href="/friends" th:classappend="${currentPage == 'friends'} ? 'active'">好友</a>
+        <a href="/friends">
+            申请
+            <span th:if="${pendingCount > 0}" class="badge" th:text="${pendingCount}">0</span>
+        </a>
+    </div>
+    <div class="user-info">
+        <img th:src="${currentUser.avatar}" alt="avatar">
+        <a href="/profile/1" style="color:#fff" th:text="${currentUser.displayName}">用户</a>
+    </div>
+</nav>
+
+<!-- 侧边栏 -->
+<aside th:fragment="sidebar" class="sidebar">
+    <!-- 用户信息 -->
+    <div class="card">
+        <div class="profile-card">
+            <img th:src="${currentUser.avatar}" alt="avatar">
+            <div class="name" th:text="${currentUser.displayName}">用户名</div>
+            <div class="class-name" th:text="${currentUser.className}">班级</div>
+            <div class="status-row">
+                <span>
+                    <span class="online-dot" th:classappend="${currentUser.online} ? 'on' : 'off'"></span>
+                    <span th:text="${currentUser.online} ? '在线' : '离线'">在线</span>
+                </span>
+                <span th:text="${currentUser.relationshipStatus}">单身</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计区 -->
+    <div class="card">
+        <div class="card-header">数据统计</div>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-num" th:text="${stats.postCount}">0</div>
+                    <div class="stat-label">动态数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" th:text="${stats.friendCount}">0</div>
+                    <div class="stat-label">好友数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" th:text="${stats.pendingRequestCount}">0</div>
+                    <div class="stat-label">待处理申请</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" th:text="${stats.visiblePhotoCount}">0</div>
+                    <div class="stat-label">可见照片</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 待处理申请 -->
+    <div class="card" th:if="${pendingCount > 0}">
+        <div class="card-header">
+            好友申请
+            <span class="badge" th:text="${pendingCount}">0</span>
+        </div>
+        <div class="card-body">
+            <div th:each="req : ${pendingRequests}" class="request-item">
+                <img th:src="${@userService.findById(req.fromUserId).avatar}" alt="">
+                <div class="request-info">
+                    <div class="request-name" th:text="${@userService.findById(req.fromUserId).displayName}">用户</div>
+                </div>
+                <div class="request-actions">
+                    <button class="btn btn-success btn-sm" th:attr="onclick='acceptRequest(' + ${req.id} + ')'">同意</button>
+                    <button class="btn btn-danger btn-sm" th:attr="onclick='rejectRequest(' + ${req.id} + ')'">拒绝</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<script th:fragment="scripts">
+function showToast(msg, type) {
+    var t = document.createElement('div');
+    t.className = 'toast ' + (type || '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    t.style.display = 'block';
+    setTimeout(function() { t.remove(); }, 2500);
+}
+
+function acceptRequest(id) {
+    fetch('/api/friend-request/' + id + '/accept', {method: 'POST'})
+        .then(r => r.json())
+        .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function rejectRequest(id) {
+    fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
+        .then(r => r.json())
+        .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function sendRequest(toUserId, btn) {
+    fetch('/api/friend-request?toUserId=' + toUserId, {method: 'POST'})
+        .then(r => r.json())
+        .then(() => { showToast('好友申请已发送', 'success'); btn.textContent = '已申请'; btn.disabled = true; btn.className = 'btn btn-sm btn-outline'; })
+        .catch(() => showToast('操作失败', 'error'));
+}
+
+function publishPost() {
+    var content = document.getElementById('postContent').value.trim();
+    if (!content) { showToast('请输入内容', 'error'); return; }
+    var visibility = document.getElementById('postVisibility').value;
+    var photoUrl = document.getElementById('postPhotoUrl').value.trim();
+
+    var formData = new FormData();
+    formData.append('content', content);
+    formData.append('visibility', visibility);
+    if (photoUrl) formData.append('photoUrl', photoUrl);
+
+    fetch('/api/posts', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(() => { showToast('发布成功', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('发布失败', 'error'));
+}
+
+function submitComment(postId, replyToId) {
+    var input = document.getElementById('commentInput');
+    var content = input.value.trim();
+    if (!content) return;
+
+    var params = 'content=' + encodeURIComponent(content);
+    if (replyToId) params += '&replyToId=' + replyToId;
+
+    fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params})
+        .then(r => r.json())
+        .then(() => { showToast('评论成功', 'success'); setTimeout(() => location.reload(), 600); })
+        .catch(() => showToast('评论失败', 'error'));
+}
+
+function setReply(commentId, userName) {
+    var input = document.getElementById('commentInput');
+    input.value = '@' + userName + ' ';
+    input.focus();
+    input.dataset.replyTo = commentId;
+}
+
+function submitCommentWithReply(postId) {
+    var input = document.getElementById('commentInput');
+    var content = input.value.trim();
+    if (!content) return;
+    var replyToId = input.dataset.replyTo || '';
+    submitComment(postId, replyToId || null);
+}
+</script>
+
+</body>
+</html>

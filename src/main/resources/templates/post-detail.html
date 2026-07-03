@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('动态详情 - 校内网')}"></head>
+<body>
+<nav th:replace="~{fragments :: topnav('home')}"></nav>
+
+<div class="main-container">
+    <aside th:replace="~{fragments :: sidebar}"></aside>
+
+    <div class="content">
+        <!-- 动态详情 -->
+        <div class="card">
+            <div class="feed-item" style="border-bottom:none;">
+                <div class="feed-header">
+                    <img th:src="${author.avatar}" alt="">
+                    <div class="feed-user-info">
+                        <a th:href="@{/profile/{id}(id=${author.id})}" class="feed-user-name" th:text="${author.displayName}">用户</a>
+                        <div class="feed-meta">
+                            <span th:text="${author.className}">班级</span>
+                            <span class="visibility-tag" th:classappend="${post.visibility.toString().toLowerCase()}" th:text="${post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="feed-content" th:text="${post.content}">内容</div>
+                <div class="feed-photos" th:if="${post.photoUrls.size() > 0}">
+                    <img th:each="url : ${post.photoUrls}" th:src="${url}" alt="照片">
+                </div>
+            </div>
+        </div>
+
+        <!-- 评论区 -->
+        <div class="card">
+            <div class="card-header">评论 (<span th:text="${commentItems.size()}">0</span>)</div>
+            <div class="card-body">
+                <div th:if="${#lists.isEmpty(commentItems)}" style="color:#999;text-align:center;">暂无评论，来说点什么吧</div>
+                <div class="comment-list">
+                    <div th:each="ci : ${commentItems}" class="comment-item">
+                        <div class="comment-header">
+                            <img th:src="${ci.user.avatar}" alt="">
+                            <span class="comment-user" th:text="${ci.user.displayName}">用户</span>
+                            <span class="comment-time" th:text="${#temporals.format(ci.comment.createdAt, 'HH:mm')}">时间</span>
+                        </div>
+                        <div class="comment-body">
+                            <span th:if="${ci.replyToUser != null}" class="reply-to" th:text="'回复 @' + ${ci.replyToUser.displayName} + '：'"></span>
+                            <span th:text="${ci.comment.content}">评论内容</span>
+                        </div>
+                        <div class="comment-reply-btn" th:attr="onclick='setReply(' + ${ci.comment.id} + ', &quot;' + ${ci.user.displayName} + '&quot;)'">回复</div>
+                    </div>
+                </div>
+
+                <!-- 评论输入 -->
+                <div class="comment-form">
+                    <input id="commentInput" type="text" placeholder="写下你的评论..." th:attr="data-post-id=${post.id}"
+                           onkeydown="if(event.key==='Enter') submitCommentWithReply(this.dataset.postId)">
+                    <button class="btn btn-primary btn-sm" th:attr="onclick='submitCommentWithReply(' + ${post.id} + ')'">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:replace="~{fragments :: scripts}"></script>
+</body>
+</html>

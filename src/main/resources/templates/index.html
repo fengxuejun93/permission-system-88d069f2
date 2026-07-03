@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('首页 - 校内网')}"></head>
+<body>
+<nav th:replace="~{fragments :: topnav('home')}"></nav>
+
+<div class="main-container">
+    <aside th:replace="~{fragments :: sidebar}"></aside>
+
+    <div class="content">
+        <!-- 发布动态 -->
+        <div class="card">
+            <div class="card-body publish-box">
+                <textarea id="postContent" placeholder="分享你的校园生活..."></textarea>
+                <input type="text" id="postPhotoUrl" class="photo-url-input" placeholder="照片URL（可选，直接粘贴图片链接）">
+                <div class="publish-actions">
+                    <select id="postVisibility" class="visibility-select">
+                        <option value="PUBLIC">所有人可见</option>
+                        <option value="FRIENDS">仅好友可见</option>
+                        <option value="PRIVATE">仅自己可见</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="publishPost()">发布</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 动态列表 -->
+        <div class="card">
+            <div class="card-header">动态</div>
+            <div th:each="item : ${feedItems}" class="feed-item">
+                <div class="feed-header">
+                    <img th:src="${item.author.avatar}" alt="">
+                    <div class="feed-user-info">
+                        <a th:href="@{/profile/{id}(id=${item.author.id})}" class="feed-user-name" th:text="${item.author.displayName}">用户</a>
+                        <div class="feed-meta">
+                            <span th:text="${item.author.className}">班级</span>
+                            <span class="visibility-tag" th:classappend="${item.post.visibility.toString().toLowerCase()}" th:text="${item.post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${item.post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="feed-content" th:text="${item.post.content}">内容</div>
+                <div class="feed-photos" th:if="${item.post.photoUrls.size() > 0}">
+                    <img th:each="url : ${item.post.photoUrls}" th:src="${url}" alt="照片">
+                </div>
+                <div class="feed-actions">
+                    <a th:href="@{/post/{id}(id=${item.post.id})}">评论 (<span th:text="${item.commentCount}">0</span>)</a>
+                </div>
+            </div>
+            <div th:if="${#lists.isEmpty(feedItems)}" class="card-body" style="text-align:center;color:#999;">暂无动态</div>
+        </div>
+    </div>
+</div>
+
+<script th:replace="~{fragments :: scripts}"></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('好友 - 校内网')}"></head>
+<body>
+<nav th:replace="~{fragments :: topnav('friends')}"></nav>
+
+<div class="main-container">
+    <aside th:replace="~{fragments :: sidebar}"></aside>
+
+    <div class="content">
+        <!-- 标签页 -->
+        <div class="card" style="margin-bottom:0;">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('friends')">我的好友</div>
+                <div class="tab" onclick="switchTab('requests')">好友申请</div>
+                <div class="tab" onclick="switchTab('discover')">发现同学</div>
+            </div>
+        </div>
+
+        <!-- 我的好友 -->
+        <div id="tab-friends" class="card">
+            <div class="card-header">我的好友 (<span th:text="${friends.size()}">0</span>)</div>
+            <div class="card-body">
+                <div th:if="${#lists.isEmpty(friends)}" style="color:#999;text-align:center;">还没有好友，去发现同学吧</div>
+                <div th:each="f : ${friends}" class="friend-item">
+                    <img th:src="${f.avatar}" alt="">
+                    <div class="friend-info">
+                        <a th:href="@{/profile/{id}(id=${f.id})}" class="friend-name" th:text="${f.displayName}">好友</a>
+                        <div class="friend-meta">
+                            <span th:text="${f.className}">班级</span>
+                            <span style="margin-left:8px;">
+                                <span class="online-dot" th:classappend="${f.online} ? 'on' : 'off'"></span>
+                                <span th:text="${f.online} ? '在线' : '离线'">在线</span>
+                            </span>
+                            <span style="margin-left:8px;" th:text="${f.relationshipStatus}">单身</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 好友申请 -->
+        <div id="tab-requests" class="card" style="display:none;">
+            <div class="card-header">收到的申请</div>
+            <div class="card-body">
+                <div th:if="${#lists.isEmpty(receivedRequests)}" style="color:#999;text-align:center;">暂无待处理申请</div>
+                <div th:each="req : ${receivedRequests}" class="request-item">
+                    <img th:src="${@userService.findById(req.fromUserId).avatar}" alt="">
+                    <div class="request-info">
+                        <a th:href="@{/profile/{id}(id=${req.fromUserId})}" class="request-name" th:text="${@userService.findById(req.fromUserId).displayName}">用户</a>
+                        <div style="font-size:11px;color:#aaa;" th:text="${@userService.findById(req.fromUserId).className}">班级</div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn btn-success btn-sm" th:attr="onclick='acceptRequest(' + ${req.id} + ')'">同意</button>
+                        <button class="btn btn-danger btn-sm" th:attr="onclick='rejectRequest(' + ${req.id} + ')'">拒绝</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-header" style="margin-top:8px;">发出的申请</div>
+            <div class="card-body">
+                <div th:if="${#lists.isEmpty(sentRequests)}" style="color:#999;text-align:center;">暂无发出的申请</div>
+                <div th:each="req : ${sentRequests}" class="request-item">
+                    <img th:src="${@userService.findById(req.toUserId).avatar}" alt="">
+                    <div class="request-info">
+                        <span class="request-name" th:text="${@userService.findById(req.toUserId).displayName}">用户</span>
+                    </div>
+                    <span style="font-size:12px;color:#e65100;">等待回复</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 发现同学 -->
+        <div id="tab-discover" class="card" style="display:none;">
+            <div class="card-header">发现同学</div>
+            <div class="card-body">
+                <div th:if="${#lists.isEmpty(discoverUsers)}" style="color:#999;text-align:center;">所有同学都已经是你的好友了</div>
+                <div th:each="du : ${discoverUsers}" class="friend-item">
+                    <img th:src="${du.user.avatar}" alt="">
+                    <div class="friend-info">
+                        <a th:href="@{/profile/{id}(id=${du.user.id})}" class="friend-name" th:text="${du.user.displayName}">同学</a>
+                        <div class="friend-meta">
+                            <span th:text="${du.user.className}">班级</span>
+                            <span style="margin-left:8px;">
+                                <span class="online-dot" th:classappend="${du.user.online} ? 'on' : 'off'"></span>
+                                <span th:text="${du.user.online} ? '在线' : '离线'">在线</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <button th:if="${du.relationship == 'NONE'}" class="btn btn-primary btn-sm" th:attr="onclick='sendRequest(' + ${du.user.id} + ', this)'">加好友</button>
+                        <button th:if="${du.relationship == 'SENT'}" class="btn btn-sm btn-outline" disabled>已申请</button>
+                        <button th:if="${du.relationship == 'RECEIVED'}" class="btn btn-sm btn-outline" disabled>对方已申请</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:replace="~{fragments :: scripts}"></script>
+<script>
+function switchTab(tab) {
+    document.getElementById('tab-friends').style.display = tab === 'friends' ? '' : 'none';
+    document.getElementById('tab-requests').style.display = tab === 'requests' ? '' : 'none';
+    document.getElementById('tab-discover').style.display = tab === 'discover' ? '' : 'none';
+    document.querySelectorAll('.tab').forEach(function(t, i) {
+        t.classList.toggle('active', ['friends','requests','discover'][i] === tab);
+    });
+}
+</script>
+</body>
+</html>
