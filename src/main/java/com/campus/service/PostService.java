@@ -122,9 +122,23 @@ public class PostService {
                 .sum();
     }
 
+    public int countPhotosByVisibility(Visibility visibility, Long currentUserId, Set<Long> friendIds) {
+        return (int) posts.values().stream()
+                .filter(p -> isPostVisible(p, currentUserId, friendIds))
+                .filter(p -> p.getVisibility() == visibility)
+                .mapToLong(p -> p.getPhotoUrls().size())
+                .sum();
+    }
+
     public int countPostsByUser(Long userId) {
         return (int) posts.values().stream()
                 .filter(p -> p.getUserId().equals(userId) && p.getStatus() == PostStatus.PUBLISHED)
+                .count();
+    }
+
+    public int countVisiblePosts(Long currentUserId, Set<Long> friendIds) {
+        return (int) posts.values().stream()
+                .filter(p -> isPostVisible(p, currentUserId, friendIds))
                 .count();
     }
 }

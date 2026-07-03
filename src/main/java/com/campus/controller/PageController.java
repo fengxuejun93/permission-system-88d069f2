@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpSession;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 public class PageController {
@@ -65,12 +66,29 @@ public class PageController {
     }
 
     @GetMapping("/")
-    public String index(Model model) {
+    public String index(@RequestParam(required = false) String visibility,
+                        @RequestParam(required = false) String status,
+                        @RequestParam(required = false) String authorId,
+                        Model model) {
         addCommonAttributes(model);
 
         Long uid = currentUserId();
         Set<Long> friendIds = friendService.getFriendIds(uid);
         List<Post> posts = postService.getVisiblePosts(uid, friendIds);
+
+        // 筛选
+        if (visibility != null && !visibility.isBlank()) {
+            Visibility v = Visibility.valueOf(visibility);
+            posts = posts.stream().filter(p -> p.getVisibility() == v).collect(Collectors.toList());
+        }
+        if (status != null && !status.isBlank()) {
+            PostStatus s = PostStatus.valueOf(status);
+            posts = posts.stream().filter(p -> p.getStatus() == s).collect(Collectors.toList());
+        }
+        if (authorId != null && !authorId.isBlank()) {
+            Long aid = Long.valueOf(authorId);
+            posts = posts.stream().filter(p -> p.getUserId().equals(aid)).collect(Collectors.toList());
+        }
 
         List<Map<String, Object>> feedItems = new ArrayList<>();
         for (Post post : posts) {
@@ -84,6 +102,9 @@ public class PageController {
         }
 
         model.addAttribute("feedItems", feedItems);
+        model.addAttribute("filterVisibility", visibility);
+        model.addAttribute("filterStatus", status);
+        model.addAttribute("filterAuthorId", authorId);
         return "index";
     }
 

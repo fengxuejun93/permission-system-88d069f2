@@ -32,6 +32,8 @@ a:hover { text-decoration: underline; }
 .stat-item { text-align: center; padding: 12px 8px; background: #f8f9fa; border-radius: 6px; }
 .stat-item .stat-num { font-size: 24px; font-weight: bold; color: #3b5998; }
 .stat-item .stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+.stat-clickable { cursor: pointer; text-decoration: none; color: inherit; transition: background 0.2s; }
+.stat-clickable:hover { background: #e8edf3; text-decoration: none; }
 
 /* 用户信息卡片 */
 .profile-card { text-align: center; padding: 20px 16px; }
@@ -188,3 +190,7 @@ a:hover { text-decoration: underline; }
 /* 发布区状态选择 */
 .status-select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
 .publish-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 8px; flex-wrap: wrap; }
+
+/* 筛选区 */
+.filter-select { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.filter-select:focus { border-color: #3b5998; outline: none; }

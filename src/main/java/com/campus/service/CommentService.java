@@ -1,6 +1,7 @@
 package com.campus.service;
 
 import com.campus.model.Comment;
+import com.campus.model.Post;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -27,5 +28,13 @@ public class CommentService {
 
     public Comment findById(Long id) {
         return comments.get(id);
+    }
+
+    public int countCommentsForVisiblePosts(Long currentUserId, Set<Long> friendIds, PostService postService) {
+        List<Post> visiblePosts = postService.getVisiblePosts(currentUserId, friendIds);
+        Set<Long> visiblePostIds = visiblePosts.stream().map(Post::getId).collect(Collectors.toSet());
+        return (int) comments.values().stream()
+                .filter(c -> visiblePostIds.contains(c.getPostId()))
+                .count();
     }
 }
