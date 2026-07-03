@@ -8,7 +8,6 @@
     <aside th:replace="~{fragments :: sidebar}"></aside>
 
     <div class="content">
-        <!-- 返回链接 -->
         <a href="/" class="back-link">&larr; 返回动态列表</a>
 
         <!-- 动态不存在 -->
@@ -26,12 +25,18 @@
         <!-- 动态详情 -->
         <div class="card" th:if="${!postNotFound}">
             <div class="feed-item" style="border-bottom:none;">
+                <!-- 管理员标记 -->
+                <div th:if="${adminHiddenMark}" class="admin-mark admin-mark-hidden">[管理员视角] 此动态已被作者隐藏</div>
+                <div th:if="${adminMissingPhotoMark}" class="admin-mark admin-mark-missing">[管理员视角] 内容提及照片但无照片附件</div>
+
                 <div class="feed-header">
                     <a th:href="@{/profile/{id}(id=${author.id})}"><img th:src="${author.avatar}" alt=""></a>
                     <div class="feed-user-info">
                         <a th:href="@{/profile/{id}(id=${author.id})}" class="feed-user-name" th:text="${author.displayName}">用户</a>
                         <div class="feed-meta">
                             <span th:text="${author.className}">班级</span>
+                            <span th:if="${author.role == T(com.campus.model.UserRole).SYSTEM_ADMIN}" class="role-tag role-tag-sys">系统管理员</span>
+                            <span th:if="${author.role == T(com.campus.model.UserRole).CLASS_ADMIN}" class="role-tag role-tag-class">班级管理员</span>
                             <span style="margin-left:6px;">
                                 <span class="online-dot" th:classappend="${author.online} ? 'on' : 'off'"></span>
                                 <span th:text="${author.online} ? '在线' : '离线'">在线</span>
@@ -51,9 +56,9 @@
                     <div class="denied-actions">
                         <a href="/" class="btn btn-outline btn-sm">返回首页</a>
                         <a th:href="@{/profile/{id}(id=${author.id})}" class="btn btn-primary btn-sm">查看发布人主页</a>
-                        <!-- 非好友时显示加好友按钮 -->
                         <button th:if="${authorRelationship == 'NONE'}" class="btn btn-success btn-sm" th:attr="onclick='sendRequest(' + ${author.id} + ', this)'">申请加好友</button>
                         <span th:if="${authorRelationship == 'SENT'}" style="font-size:12px;color:#e65100;">已申请，等待回复</span>
+                        <span th:if="${authorRelationship == 'RECEIVED'}" style="font-size:12px;color:#e65100;">对方已申请加你，去好友页处理</span>
                         <span th:if="${authorRelationship == 'FRIEND'}" style="font-size:12px;color:#27ae60;">你们已是好友，但此动态不对你可见</span>
                     </div>
                 </div>
@@ -72,7 +77,7 @@
                         </span>
                         <span>&#128172; <span th:text="${commentCount}">0</span> 评论</span>
                     </div>
-                    <!-- 自己的动态操作 -->
+                    <!-- 本人操作区 -->
                     <div class="post-ops" th:if="${isOwner}">
                         <select onchange="changePostVisibility(this.dataset.postId, this.value)" th:attr="data-post-id=${post.id}">
                             <option value="PUBLIC" th:selected="${post.visibility == T(com.campus.model.Visibility).PUBLIC}">公开</option>
@@ -83,6 +88,10 @@
                         <button th:if="${post.status == T(com.campus.model.PostStatus).HIDDEN}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${post.id} + ', &quot;PUBLISHED&quot;)'">恢复发布</button>
                         <button th:if="${post.status == T(com.campus.model.PostStatus).DRAFT}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${post.id} + ', &quot;PUBLISHED&quot;)'">发布</button>
                         <button class="btn btn-danger btn-sm" th:attr="onclick='deletePost(' + ${post.id} + ')'">删除</button>
+                    </div>
+                    <!-- 管理员恢复区 -->
+                    <div class="post-ops" th:if="${isAdmin and !isOwner and post.status == T(com.campus.model.PostStatus).HIDDEN and post.visibility != T(com.campus.model.Visibility).PRIVATE}">
+                        <button class="btn btn-success btn-sm" th:attr="onclick='adminRestorePost(' + ${post.id} + ')'">恢复此动态</button>
                     </div>
                 </th:block>
             </div>
@@ -100,6 +109,7 @@
                             <a th:href="@{/profile/{id}(id=${ci.user.id})}"><img th:src="${ci.user.avatar}" alt=""></a>
                             <a th:href="@{/profile/{id}(id=${ci.user.id})}" class="comment-user" th:text="${ci.user.displayName}">用户</a>
                             <span class="comment-time" th:text="${#temporals.format(ci.comment.createdAt, 'MM-dd HH:mm')}">时间</span>
+                            <span th:if="${ci.canDelete}" class="comment-delete-btn" th:attr="onclick='deleteComment(' + ${ci.comment.id} + ')'">删除</span>
                         </div>
                         <div class="comment-body" th:text="${ci.comment.content}">评论内容</div>
                         <div class="comment-reply-btn" th:attr="onclick='setReply(' + ${ci.comment.id} + ', &quot;' + ${ci.user.displayName} + '&quot;)'">回复</div>
@@ -111,6 +121,7 @@
                                     <a th:href="@{/profile/{id}(id=${reply.user.id})}" class="comment-user" th:text="${reply.user.displayName}">用户</a>
                                     <span th:if="${reply.replyToUser != null}" class="reply-to" th:text="'回复 @' + ${reply.replyToUser.displayName}"></span>
                                     <span class="comment-time" th:text="${#temporals.format(reply.comment.createdAt, 'MM-dd HH:mm')}">时间</span>
+                                    <span th:if="${reply.canDelete}" class="comment-delete-btn" th:attr="onclick='deleteComment(' + ${reply.comment.id} + ')'">删除</span>
                                 </div>
                                 <div class="comment-body" th:text="${reply.comment.content}">回复内容</div>
                                 <div class="comment-reply-btn" th:attr="onclick='setReply(' + ${reply.comment.id} + ', &quot;' + ${reply.user.displayName} + '&quot;)'">回复</div>

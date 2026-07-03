@@ -13,6 +13,7 @@ public class User {
     private boolean online;
     private String relationshipStatus;
     private String bio;
+    private UserRole role;
     private LocalDateTime createdAt;
 
     public User() {}
@@ -27,6 +28,21 @@ public class User {
         this.online = online;
         this.relationshipStatus = relationshipStatus;
         this.bio = bio;
+        this.role = UserRole.STUDENT;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public User(Long id, String username, String displayName, String avatar, String className,
+                boolean online, String relationshipStatus, String bio, UserRole role) {
+        this.id = id;
+        this.username = username;
+        this.displayName = displayName;
+        this.avatar = avatar;
+        this.className = className;
+        this.online = online;
+        this.relationshipStatus = relationshipStatus;
+        this.bio = bio;
+        this.role = role != null ? role : UserRole.STUDENT;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -46,6 +62,16 @@ public class User {
     public void setRelationshipStatus(String relationshipStatus) { this.relationshipStatus = relationshipStatus; }
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public boolean isAdmin() {
+        return role == UserRole.SYSTEM_ADMIN || role == UserRole.CLASS_ADMIN;
+    }
+
+    public boolean isSystemAdmin() {
+        return role == UserRole.SYSTEM_ADMIN;
+    }
 }

@@ -55,6 +55,8 @@ public class PageController {
         model.addAttribute("currentUserId", uid);
         model.addAttribute("friendIds", friendIds);
         model.addAttribute("allUsers", allUsers);
+        model.addAttribute("isAdmin", currentUser != null && currentUser.isAdmin());
+        model.addAttribute("isSystemAdmin", currentUser != null && currentUser.isSystemAdmin());
     }
 
     @PostMapping("/switch-user")
@@ -76,8 +78,31 @@ public class PageController {
         addCommonAttributes(model);
 
         Long uid = currentUserId();
+        User currentUser = userService.findById(uid);
+        boolean isAdmin = currentUser != null && currentUser.isAdmin();
         Set<Long> friendIds = friendService.getFriendIds(uid);
-        List<Post> posts = postService.getVisiblePosts(uid, friendIds);
+
+        // 获取动态列表：普通用户看可见动态，管理员额外能看到被隐藏的（但不是PRIVATE的）
+        List<Post> posts;
+        if (isAdmin) {
+            // 管理员可以看到所有非PRIVATE的动态（包括HIDDEN的）
+            posts = postService.getAllPosts().stream()
+                    .filter(p -> {
+                        // PRIVATE的仅作者自己和管理员不能看（管理员不绕过仅自己可见）
+                        if (p.getVisibility() == Visibility.PRIVATE && !p.getUserId().equals(uid)) {
+                            return false;
+                        }
+                        // DRAFT只看自己的
+                        if (p.getStatus() == PostStatus.DRAFT && !p.getUserId().equals(uid)) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                    .collect(Collectors.toList());
+        } else {
+            posts = postService.getVisiblePosts(uid, friendIds);
+        }
 
         // 筛选
         if (visibility != null && !visibility.isBlank()) {
@@ -92,7 +117,6 @@ public class PageController {
             Long aid = Long.valueOf(authorId);
             posts = posts.stream().filter(p -> p.getUserId().equals(aid)).collect(Collectors.toList());
         }
-        // 关键词搜索：匹配发布人姓名/班级、动态文字、照片说明(url)
         if (keyword != null && !keyword.isBlank()) {
             String kw = keyword.toLowerCase();
             posts = posts.stream().filter(p -> {
@@ -104,14 +128,12 @@ public class PageController {
                 return matchAuthor || matchContent || matchPhoto;
             }).collect(Collectors.toList());
         }
-        // 按关系类型筛选
         if (relationship != null && !relationship.isBlank()) {
             posts = posts.stream().filter(p -> {
                 String rel = friendService.getRelationship(uid, p.getUserId());
                 return rel.equals(relationship);
             }).collect(Collectors.toList());
         }
-        // 按是否有评论筛选
         if (hasComment != null && !hasComment.isBlank()) {
             boolean wantComment = "yes".equals(hasComment);
             posts = posts.stream().filter(p -> {
@@ -128,6 +150,9 @@ public class PageController {
             item.put("commentCount", commentService.getCommentsByPostId(post.getId()).size());
             item.put("likeCount", likeService.countByPostId(post.getId()));
             item.put("hasLiked", likeService.hasLiked(post.getId(), uid));
+            // 管理员标记：是否是被隐藏的、是否缺照片
+            item.put("adminHidden", isAdmin && post.getStatus() == PostStatus.HIDDEN && !post.getUserId().equals(uid));
+            item.put("adminMissingPhoto", isAdmin && post.getContent().contains("照片") && post.getPhotoUrls().isEmpty());
             feedItems.add(item);
         }
 
@@ -146,6 +171,8 @@ public class PageController {
         addCommonAttributes(model);
 
         Long uid = currentUserId();
+        User currentUser = userService.findById(uid);
+        boolean isAdmin = currentUser != null && currentUser.isAdmin();
         Post post = postService.findById(id);
         if (post == null) {
             model.addAttribute("postNotFound", true);
@@ -155,25 +182,29 @@ public class PageController {
         model.addAttribute("postNotFound", false);
 
         Set<Long> friendIds = friendService.getFriendIds(uid);
-        boolean visible = isPostVisible(post, uid, friendIds);
+        boolean visible = isPostVisible(post, uid, friendIds, isAdmin);
 
         User author = userService.findById(post.getUserId());
 
         model.addAttribute("post", post);
         model.addAttribute("author", author);
         model.addAttribute("isOwner", post.getUserId().equals(uid));
+        model.addAttribute("isAdmin", isAdmin);
 
         if (!visible) {
             model.addAttribute("accessDenied", true);
             String reason = postService.getDeniedReason(post, uid, friendIds);
             model.addAttribute("deniedReason", reason);
-            // 好友关系信息，用于权限提示页的操作入口
             String relationship = friendService.getRelationship(uid, author.getId());
             model.addAttribute("authorRelationship", relationship);
             return "post-detail";
         }
 
         model.addAttribute("accessDenied", false);
+        // 管理员看到的特殊标记
+        model.addAttribute("adminHiddenMark", isAdmin && post.getStatus() == PostStatus.HIDDEN && !post.getUserId().equals(uid));
+        model.addAttribute("adminMissingPhotoMark", isAdmin && post.getContent().contains("照片") && post.getPhotoUrls().isEmpty());
+
         List<Comment> comments = commentService.getCommentsByPostId(id);
 
         Map<Long, List<Map<String, Object>>> repliesMap = new LinkedHashMap<>();
@@ -183,6 +214,7 @@ public class PageController {
             Map<String, Object> item = new HashMap<>();
             item.put("comment", c);
             item.put("user", userService.findById(c.getUserId()));
+            item.put("canDelete", c.getUserId().equals(uid));
             if (c.getReplyToId() != null) {
                 Comment replyTo = commentService.findById(c.getReplyToId());
                 if (replyTo != null) {
@@ -231,8 +263,6 @@ public class PageController {
 
         // 好友搜索筛选
         String kw = (keyword != null && !keyword.isBlank()) ? keyword.toLowerCase() : null;
-        boolean filterOnline = "true".equals(online);
-        boolean filterOffline = "false".equals(online);
 
         List<User> filteredFriends = friends;
         if (kw != null) {
@@ -301,10 +331,11 @@ public class PageController {
 
     @GetMapping("/profile/{id}")
     public String profile(@PathVariable Long id, Model model) {
-
         addCommonAttributes(model);
 
         Long uid = currentUserId();
+        User currentUser = userService.findById(uid);
+        boolean isAdmin = currentUser != null && currentUser.isAdmin();
         User profileUser = userService.findById(id);
         if (profileUser == null) return "redirect:/";
 
@@ -312,12 +343,15 @@ public class PageController {
         List<Post> userPosts = postService.getVisiblePostsByUser(id, uid, friendIds);
         String relationship = friendService.getRelationship(uid, id);
 
+        // 管理员额外能看到被隐藏的（非PRIVATE）
         List<Map<String, Object>> postItems = new ArrayList<>();
         for (Post post : userPosts) {
             Map<String, Object> item = new HashMap<>();
             item.put("post", post);
             item.put("commentCount", commentService.getCommentsByPostId(post.getId()).size());
             item.put("likeCount", likeService.countByPostId(post.getId()));
+            item.put("adminHiddenMark", isAdmin && post.getStatus() == PostStatus.HIDDEN && !post.getUserId().equals(uid));
+            item.put("adminMissingPhotoMark", isAdmin && post.getContent().contains("照片") && post.getPhotoUrls().isEmpty());
             postItems.add(item);
         }
 
@@ -338,6 +372,23 @@ public class PageController {
             }
         }
 
+        // 管理员在他人主页也能看到该用户的隐藏动态（但不是PRIVATE）
+        List<Map<String, Object>> adminHiddenItems = null;
+        if (isAdmin && !id.equals(uid)) {
+            List<Post> allTargetPosts = postService.getAllPostsByUser(id);
+            adminHiddenItems = new ArrayList<>();
+            for (Post post : allTargetPosts) {
+                // 只展示普通用户看不到的隐藏动态
+                if (post.getStatus() == PostStatus.HIDDEN && post.getVisibility() != Visibility.PRIVATE) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("post", post);
+                    item.put("commentCount", commentService.getCommentsByPostId(post.getId()).size());
+                    item.put("likeCount", likeService.countByPostId(post.getId()));
+                    adminHiddenItems.add(item);
+                }
+            }
+        }
+
         FriendRequest pendingReq = null;
         for (FriendRequest r : friendService.getAllRequests()) {
             if (r.getStatus() == FriendRequest.Status.PENDING) {
@@ -354,6 +405,7 @@ public class PageController {
         model.addAttribute("profileUser", profileUser);
         model.addAttribute("postItems", postItems);
         model.addAttribute("allPostItems", allPostItems);
+        model.addAttribute("adminHiddenItems", adminHiddenItems);
         model.addAttribute("hasPhotos", hasPhotos);
         model.addAttribute("relationship", relationship);
         model.addAttribute("isSelf", id.equals(uid));
@@ -368,17 +420,34 @@ public class PageController {
         addCommonAttributes(model);
         Long uid = currentUserId();
         Set<Long> friendIds = friendService.getFriendIds(uid);
+        User currentUser = userService.findById(uid);
+        boolean isAdmin = currentUser != null && currentUser.isAdmin();
 
-        // 获取一些数据用于调试页
         List<Post> allPosts = postService.getVisiblePosts(uid, friendIds);
         List<Post> myPosts = postService.getAllPostsByUser(uid);
+
+        // 管理员可见的隐藏动态
+        List<Post> adminHiddenPosts = Collections.emptyList();
+        if (isAdmin) {
+            adminHiddenPosts = postService.getAllPosts().stream()
+                    .filter(p -> p.getStatus() == PostStatus.HIDDEN && !p.getUserId().equals(uid))
+                    .collect(Collectors.toList());
+        }
+
         model.addAttribute("allVisiblePosts", allPosts);
         model.addAttribute("myPosts", myPosts);
+        model.addAttribute("adminHiddenPosts", adminHiddenPosts);
         return "debug";
     }
 
-    private boolean isPostVisible(Post p, Long currentUserId, Set<Long> friendIds) {
-        if (p.getStatus() == PostStatus.HIDDEN || p.getStatus() == PostStatus.DRAFT) {
+    private boolean isPostVisible(Post p, Long currentUserId, Set<Long> friendIds, boolean isAdmin) {
+        // 管理员可以看到HIDDEN的，但不能看PRIVATE（非自己的）
+        if (p.getStatus() == PostStatus.HIDDEN) {
+            if (p.getUserId().equals(currentUserId)) return true;
+            if (isAdmin && p.getVisibility() != Visibility.PRIVATE) return true;
+            return false;
+        }
+        if (p.getStatus() == PostStatus.DRAFT) {
             return p.getUserId().equals(currentUserId);
         }
         return switch (p.getVisibility()) {

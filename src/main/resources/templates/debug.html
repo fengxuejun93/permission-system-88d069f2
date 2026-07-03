@@ -13,7 +13,7 @@
         <div class="card">
             <div class="card-header">异常场景演示 / 调试区</div>
             <div class="card-body" style="font-size:13px;line-height:1.8;">
-                <p style="color:#888;margin-bottom:12px;">此页面仅用于验证异常反馈和可恢复机制，不影响正常业务路径。每个按钮触发一种异常场景，页面会显示对应的用户反馈。</p>
+                <p style="color:#888;margin-bottom:12px;">此页面仅用于验证异常反馈和可恢复机制，不影响正常业务路径。</p>
 
                 <h4 style="margin:16px 0 8px;color:#3b5998;">1. 动态相关异常</h4>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
@@ -38,6 +38,7 @@
                     <button class="btn btn-outline btn-sm" onclick="triggerEmptyComment()">提交空评论</button>
                     <button class="btn btn-outline btn-sm" onclick="triggerCommentOnHidden()">评论已隐藏的动态</button>
                     <button class="btn btn-outline btn-sm" onclick="triggerCommentOnPrivate()">评论无权限动态</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerDeleteOtherComment()">删除他人评论</button>
                 </div>
 
                 <h4 style="margin:16px 0 8px;color:#3b5998;">4. 筛选无结果</h4>
@@ -46,10 +47,32 @@
                     <a href="/?authorId=999" class="btn btn-outline btn-sm">筛选不存在的作者</a>
                 </div>
 
-                <h4 style="margin:16px 0 8px;color:#3b5998;">5. 视角切换验证</h4>
-                <div style="color:#666;margin-bottom:8px;">切换到非好友视角（如王五），然后访问仅好友可见的动态详情页，验证权限提示和"申请好友"入口。</div>
+                <h4 style="margin:16px 0 8px;color:#3b5998;">5. 权限角色演示</h4>
+                <div style="color:#666;margin-bottom:8px;">切换到不同身份，验证权限差异。每个角色进入同一条动态/个人主页/评论区时，看到的操作不同。</div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                    <span style="font-size:12px;color:#888;">步骤：1) 用顶部下拉切换到王五 → 2) 找到赵六的"仅好友可见"动态 → 3) 点击进入详情 → 4) 验证权限提示和加好友按钮</span>
+                    <a href="/?relationship=SELF" class="btn btn-outline btn-sm">自己视角：可编辑/隐藏/恢复/删除自己的动态和评论</a>
+                    <a href="/?relationship=FRIEND" class="btn btn-outline btn-sm">好友视角：可看好友可见内容并评论回复</a>
+                    <a href="/?relationship=NONE" class="btn btn-outline btn-sm">陌生人视角：不能看仅好友可见，可申请好友</a>
+                </div>
+                <div style="color:#666;margin-bottom:8px;">管理员特有场景：</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <a href="/?status=HIDDEN" class="btn btn-outline btn-sm">管理员：查看被隐藏动态标记（需先切到管理员身份）</a>
+                    <button class="btn btn-outline btn-sm" onclick="triggerAdminRestoreNonAdmin()">非管理员尝试恢复隐藏动态</button>
+                    <button class="btn btn-outline btn-sm" onclick="triggerAdminRestorePrivate()">管理员尝试恢复私密动态</button>
+                </div>
+
+                <h4 style="margin:16px 0 8px;color:#3b5998;">6. 视角切换验证</h4>
+                <div style="color:#666;margin-bottom:8px;">完整复查步骤：用顶部下拉切换到不同角色，访问同一条动态，观察操作差异。</div>
+                <div style="background:#f5f5f5;padding:10px;border-radius:6px;font-size:12px;line-height:2;margin-bottom:12px;">
+                    <b>切换身份 → 访问同一条动态 → 申请/处理好友 → 修改可见范围 → 评论回复 → 查看统计变化</b><br>
+                    1) 切到张三(本人) → 看到自己动态有"隐藏/恢复/删除"操作，评论有"删除"按钮<br>
+                    2) 切到李四(好友) → 看到张三的"好友可见"动态，可以评论回复，但不能编辑张三的动态<br>
+                    3) 切到王五(非好友) → 看不到张三的"好友可见"动态，详情页显示"申请加好友"按钮<br>
+                    4) 切到陈管理(系统管理员) → 看到被隐藏动态的标记和"恢复"按钮，但看不到"仅自己可见"的私密动态<br>
+                    5) 切到周班长(班级管理员) → 同班同学的被隐藏动态可见标记，同样不能绕过私密动态<br>
+                    6) 好友申请：王五申请加张三 → 张三同意 → 动态列表和统计数字同步变化<br>
+                    7) 修改可见范围：张三把公开动态改为"仅好友" → 非好友视角列表立刻减少<br>
+                    8) 隐藏/恢复动态：张三隐藏一条动态 → 管理员看到标记 → 管理员恢复 → 正常列表同步
                 </div>
 
                 <hr style="margin:16px 0;border-color:#eee;">
@@ -63,6 +86,19 @@
                         <span class="status-tag" th:classappend="${p.status.toString().toLowerCase()}" th:text="${p.status == T(com.campus.model.PostStatus).PUBLISHED} ? '已发布' : (${p.status == T(com.campus.model.PostStatus).DRAFT} ? '草稿' : '已隐藏')" style="font-size:10px;"></span>
                     </div>
                 </div>
+
+                <!-- 管理员视角的隐藏动态 -->
+                <div th:if="${!adminHiddenPosts.isEmpty()}">
+                    <h4 style="margin:12px 0 8px;color:#e65100;">管理员可见：他人被隐藏的动态</h4>
+                    <div style="color:#666;font-size:12px;">
+                        <div th:each="p : ${adminHiddenPosts}" style="padding:2px 0;">
+                            <span th:text="'动态 #' + ${p.id}"></span>
+                            (<span th:text="${@userService.findById(p.userId).displayName}">用户</span>):
+                            <span th:text="${p.content.length() > 30 ? p.content.substring(0,30)+'...' : p.content}"></span>
+                            <a th:href="@{/post/{id}(id=${p.id})}" style="color:#3b5998;">查看</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -70,13 +106,11 @@
 
 <script th:replace="~{fragments :: scripts}"></script>
 <script>
-// 动态相关异常
 function triggerDeletedPost() {
     window.open('/post/99999', '_blank');
 }
 
 function triggerHiddenPost() {
-    // 找到自己的第一条动态，隐藏它，然后在新窗口打开
     var myPosts = document.querySelectorAll('[data-post-id]');
     if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
     var firstId = myPosts[0].dataset.postId;
@@ -97,7 +131,6 @@ function triggerEmptyContent() {
 }
 
 function triggerDuplicateStatus() {
-    // 找到自己的第一条已发布动态，再设为PUBLISHED
     var myPosts = document.querySelectorAll('[data-post-id]');
     if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
     var firstId = myPosts[0].dataset.postId;
@@ -118,7 +151,6 @@ function triggerDuplicateVisibility() {
 }
 
 function triggerNoPhotoPost() {
-    // 找一条没有照片的动态进入详情查看
     var links = document.querySelectorAll('a[href*="/post/"]');
     for (var i = 0; i < links.length; i++) {
         var l = links[i];
@@ -131,7 +163,6 @@ function triggerNoPhotoPost() {
     showToast('没有找到无照片的动态', 'error');
 }
 
-// 好友申请异常
 function triggerDuplicateRequest() {
     fetch('/api/friend-request?toUserId=2', {method: 'POST'})
         .then(r => handleApiError(r))
@@ -143,7 +174,6 @@ function triggerDuplicateRequest() {
 }
 
 function triggerAcceptAgain() {
-    // 同意ID=101的申请（已处理的），触发"已处理"反馈
     fetch('/api/friend-request/101/accept', {method: 'POST'})
         .then(r => handleApiError(r))
         .then(() => showToast('不应该到这里', 'error'))
@@ -158,7 +188,8 @@ function triggerRejectAgain() {
 }
 
 function triggerSelfRequest() {
-    fetch('/api/friend-request?toUserId=' + document.querySelector('.user-select')?.value || '1', {method: 'POST'})
+    var uid = document.querySelector('.user-select')?.value || '1';
+    fetch('/api/friend-request?toUserId=' + uid, {method: 'POST'})
         .then(r => handleApiError(r))
         .then(d => {
             if (d.error) showToast(d.error + (d.hint ? ' - ' + d.hint : ''), 'error');
@@ -166,9 +197,7 @@ function triggerSelfRequest() {
         .catch(e => showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'));
 }
 
-// 评论权限异常
 function triggerEmptyComment() {
-    // 找当前页面第一条动态
     var links = document.querySelectorAll('a[href*="/post/"]');
     if (links.length === 0) { showToast('没有动态', 'error'); return; }
     var postId = links[0].href.match(/\/post\/(\d+)/)[1];
@@ -179,11 +208,9 @@ function triggerEmptyComment() {
 }
 
 function triggerCommentOnHidden() {
-    // 找自己的已隐藏动态，尝试评论
     var myPosts = document.querySelectorAll('[data-post-id]');
     if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
     var firstId = myPosts[0].dataset.postId;
-    // 先隐藏
     fetch('/api/posts/' + firstId + '/status', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'status=HIDDEN'})
         .then(r => handleApiError(r))
         .then(() => {
@@ -195,15 +222,45 @@ function triggerCommentOnHidden() {
 }
 
 function triggerCommentOnPrivate() {
-    // 找一条PRIVATE动态尝试评论（需要是非作者视角）
     var links = document.querySelectorAll('a[href*="/post/"]');
     if (links.length === 0) { showToast('没有动态', 'error'); return; }
-    // 尝试评论第一条动态（如果不是自己的就会触发权限错误）
     var postId = links[0].href.match(/\/post\/(\d+)/)[1];
     fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'content=test'})
         .then(r => handleApiError(r))
         .then(() => showToast('评论成功（此动态对你可见）', 'success'))
         .catch(e => showToast(e.data ? e.data.error + ' - ' + (e.data.reason || e.data.hint) : e.message, 'error'));
+}
+
+// 权限相关：非管理员尝试恢复
+function triggerAdminRestoreNonAdmin() {
+    var myPosts = document.querySelectorAll('[data-post-id]');
+    if (myPosts.length === 0) { showToast('没有可操作的动态', 'error'); return; }
+    var firstId = myPosts[0].dataset.postId;
+    // 先隐藏自己的动态，然后尝试用管理员恢复接口
+    fetch('/api/posts/' + firstId + '/status', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'status=HIDDEN'})
+        .then(r => handleApiError(r))
+        .then(() => fetch('/api/posts/' + firstId + '/admin-restore', {method: 'POST'}))
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+// 权限相关：管理员尝试恢复PRIVATE动态
+function triggerAdminRestorePrivate() {
+    // 找一条PRIVATE动态（动态#4是张三的私密动态）
+    fetch('/api/posts/104/admin-restore', {method: 'POST'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里（如果是管理员且动态已隐藏）', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
+}
+
+// 删除他人评论
+function triggerDeleteOtherComment() {
+    // 尝试删除评论ID=102（属于李四的评论）
+    fetch('/api/comments/102', {method: 'DELETE'})
+        .then(r => handleApiError(r))
+        .then(() => showToast('不应该到这里（如果这不是你的评论）', 'error'))
+        .catch(e => showToast(e.data ? e.data.error + ' - ' + e.data.hint : e.message, 'error'));
 }
 </script>
 </body>

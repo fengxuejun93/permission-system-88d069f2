@@ -29,6 +29,10 @@ public class PostService {
         return posts.get(id);
     }
 
+    public List<Post> getAllPosts() {
+        return new ArrayList<>(posts.values());
+    }
+
     public void deleteById(Long id) {
         posts.remove(id);
     }

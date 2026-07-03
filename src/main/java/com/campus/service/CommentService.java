@@ -30,6 +30,10 @@ public class CommentService {
         return comments.get(id);
     }
 
+    public void deleteById(Long id) {
+        comments.remove(id);
+    }
+
     public int countCommentsForVisiblePosts(Long currentUserId, Set<Long> friendIds, PostService postService) {
         List<Post> visiblePosts = postService.getVisiblePosts(currentUserId, friendIds);
         Set<Long> visiblePostIds = visiblePosts.stream().map(Post::getId).collect(Collectors.toSet());

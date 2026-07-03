@@ -26,7 +26,7 @@
         <form method="POST" action="/switch-user" style="display:inline;">
             <select name="userId" onchange="this.form.submit()" class="user-select">
                 <option th:each="u : ${allUsers}" th:value="${u.id}" th:selected="${u.id == currentUserId}"
-                        th:text="${u.displayName} + ' (' + ${u.className} + ')'">用户</option>
+                        th:text="${u.displayName} + ' (' + ${u.className} + ')' + (${u.role == T(com.campus.model.UserRole).SYSTEM_ADMIN} ? ' [系统管理员]' : (${u.role == T(com.campus.model.UserRole).CLASS_ADMIN} ? ' [班级管理员]' : ''))">用户</option>
             </select>
         </form>
     </div>
@@ -40,6 +40,9 @@
             <img th:src="${currentUser.avatar}" alt="avatar">
             <div class="name" th:text="${currentUser.displayName}">用户名</div>
             <div class="class-name" th:text="${currentUser.className}">班级</div>
+            <!-- 角色标识 -->
+            <div th:if="${currentUser.role == T(com.campus.model.UserRole).SYSTEM_ADMIN}" class="role-badge role-system-admin">系统管理员</div>
+            <div th:if="${currentUser.role == T(com.campus.model.UserRole).CLASS_ADMIN}" class="role-badge role-class-admin">班级管理员</div>
             <div class="status-row">
                 <span>
                     <span class="online-dot" th:classappend="${currentUser.online} ? 'on' : 'off'"></span>
@@ -136,7 +139,6 @@ function showToast(msg, type) {
     setTimeout(function() { t.remove(); }, 3000);
 }
 
-// 通用 API 错误处理
 function handleApiError(r) {
     if (r.ok) return r.json();
     return r.json().then(d => {
@@ -147,7 +149,6 @@ function handleApiError(r) {
     });
 }
 
-// 操作后刷新页面（保留当前筛选参数）
 function reloadWithFilters() {
     location.reload();
 }
@@ -293,6 +294,24 @@ function deletePost(postId) {
     fetch('/api/posts/' + postId, {method: 'DELETE'})
         .then(r => handleApiError(r))
         .then(() => { showToast('已删除', 'error'); setTimeout(() => reloadWithFilters(), 600); })
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
+}
+
+// 删除自己的评论
+function deleteComment(commentId) {
+    if (!confirm('确定删除此评论？')) return;
+    fetch('/api/comments/' + commentId, {method: 'DELETE'})
+        .then(r => handleApiError(r))
+        .then(() => { showToast('评论已删除', 'success'); setTimeout(() => reloadWithFilters(), 600); })
+        .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
+}
+
+// 管理员恢复被隐藏的动态
+function adminRestorePost(postId) {
+    if (!confirm('确定恢复此隐藏动态为已发布？')) return;
+    fetch('/api/posts/' + postId + '/admin-restore', {method: 'POST'})
+        .then(r => handleApiError(r))
+        .then(() => { showToast('动态已恢复', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 </script>

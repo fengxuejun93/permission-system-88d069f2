@@ -28,7 +28,7 @@ public class MockDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // 创建模拟同学
+        // 创建模拟同学（原有5人 + 新增2个管理员）
         userService.save(new User(1L, "zhangsan", "张三",
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=avatar%20of%20a%20chinese%20college%20boy%20smiling%20headshot%20clean%20background&image_size=square_hd",
                 "计算机2023级1班", true, "单身", "喜欢打篮球和写代码"));
@@ -49,14 +49,31 @@ public class MockDataInitializer implements CommandLineRunner {
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=avatar%20of%20a%20chinese%20college%20boy%20with%20cap%20headshot&image_size=square_hd",
                 "物理2023级1班", false, "恋爱中", "物理实验达人"));
 
+        // 系统管理员
+        userService.save(new User(6L, "admin", "陈管理",
+                "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=avatar%20of%20a%20chinese%20college%20admin%20serious%20headshot&image_size=square_hd",
+                "信息中心", true, "单身", "系统管理员，负责内容审核", UserRole.SYSTEM_ADMIN));
+
+        // 班级管理员（同班可管班级内容）
+        userService.save(new User(7L, "classadmin", "周班长",
+                "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=avatar%20of%20a%20chinese%20college%20class%20monitor%20headshot&image_size=square_hd",
+                "计算机2023级1班", true, "单身", "计算机1班班长，协助管理班级内容", UserRole.CLASS_ADMIN));
+
         // 好友关系：张三-李四(已通过), 张三-赵六(已通过)
         FriendRequest r1 = friendService.addRequest(2L, 1L);
         friendService.acceptRequest(r1.getId());
         FriendRequest r2 = friendService.addRequest(1L, 4L);
         friendService.acceptRequest(r2.getId());
 
-        // 待处理申请：王五申请加张三
+        // 待处理申请：王五申请加张三（张三视角=RECEIVED）
         friendService.addRequest(3L, 1L);
+
+        // 张三已发送申请给孙七（张三视角=SENT，孙七视角=RECEIVED）
+        friendService.addRequest(1L, 5L);
+
+        // 班级管理员和系统管理员和部分人有好友关系
+        FriendRequest r3 = friendService.addRequest(7L, 1L);
+        friendService.acceptRequest(r3.getId());
 
         // 模拟动态（PUBLISHED + 各种可见性）
         Post p1 = postService.createPost(new Post(null, 1L, "今天校园的樱花开了，好美！",
@@ -87,10 +104,22 @@ public class MockDataInitializer implements CommandLineRunner {
         Post p8 = postService.createPost(new Post(null, 2L, "草稿：读后感还没写完",
                 Visibility.FRIENDS, PostStatus.DRAFT, List.of()));
 
-        // 已隐藏动态
+        // 已隐藏动态（管理员可见标记）
         Post p9 = postService.createPost(new Post(null, 1L, "之前发的照片不太好看，先隐藏了",
                 Visibility.PUBLIC, PostStatus.HIDDEN, List.of(
                 "https://trae-api-cn.mchort.guru/api/ide/v1/text_to_image?prompt=sunset%20over%20university%20campus%20building&image_size=landscape_16_9")));
+
+        // 管理员发的公告动态
+        postService.createPost(new Post(null, 6L, "系统维护通知：本周六凌晨2点-6点将进行系统维护",
+                Visibility.PUBLIC, PostStatus.PUBLISHED, List.of()));
+
+        // 班级管理员发的通知
+        postService.createPost(new Post(null, 7L, "计算机1班班费公示，请同学们查看",
+                Visibility.PUBLIC, PostStatus.PUBLISHED, List.of()));
+
+        // 一条缺照片字段的动态（content有"照片"但实际无photoUrls）- 用于管理员标记
+        postService.createPost(new Post(null, 3L, "分享一下今天拍的照片风景照",
+                Visibility.PUBLIC, PostStatus.PUBLISHED, List.of()));
 
         // 模拟点赞
         likeService.addInitialLike(p1.getId(), 2L);

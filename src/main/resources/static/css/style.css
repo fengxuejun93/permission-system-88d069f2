@@ -209,3 +209,22 @@ a:hover { text-decoration: underline; }
 /* 好友统计高亮 */
 .stat-active { background: #e8edf3; border: 2px solid #3b5998; }
 .friend-stats .stat-item { position: relative; transition: all 0.2s; }
+
+/* 角色标识 */
+.role-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-top: 6px; font-weight: 600; }
+.role-system-admin { background: #c62828; color: #fff; }
+.role-class-admin { background: #e65100; color: #fff; }
+
+/* 角色标签（动态列表中） */
+.role-tag { font-size: 10px; padding: 1px 5px; border-radius: 2px; margin-left: 4px; }
+.role-tag-sys { background: #ffcdd2; color: #c62828; }
+.role-tag-class { background: #ffe0b2; color: #e65100; }
+
+/* 管理员标记 */
+.admin-mark { font-size: 11px; padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-weight: 600; }
+.admin-mark-hidden { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+.admin-mark-missing { background: #fce4ec; color: #c62828; border: 1px solid #ffcdd2; }
+
+/* 评论删除按钮 */
+.comment-delete-btn { font-size: 11px; color: #e74c3c; cursor: pointer; margin-left: 8px; }
+.comment-delete-btn:hover { text-decoration: underline; color: #c0392b; }

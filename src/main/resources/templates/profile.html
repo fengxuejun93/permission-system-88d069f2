@@ -8,7 +8,6 @@
     <aside th:replace="~{fragments :: sidebar}"></aside>
 
     <div class="content">
-        <!-- 返回链接 -->
         <a href="javascript:history.back()" class="back-link">&larr; 返回</a>
 
         <!-- 用户信息 -->
@@ -16,6 +15,9 @@
             <div class="profile-header">
                 <img th:src="${profileUser.avatar}" alt="">
                 <div class="profile-name" th:text="${profileUser.displayName}">用户</div>
+                <!-- 角色标识 -->
+                <div th:if="${profileUser.role == T(com.campus.model.UserRole).SYSTEM_ADMIN}" class="role-badge role-system-admin">系统管理员</div>
+                <div th:if="${profileUser.role == T(com.campus.model.UserRole).CLASS_ADMIN}" class="role-badge role-class-admin">班级管理员</div>
                 <div class="profile-meta">
                     <span th:text="${profileUser.className}">班级</span>
                     <span style="margin-left:12px;">
@@ -92,7 +94,6 @@
                     <span style="color:#888;font-size:12px;">&#9829; <span th:text="${pi.likeCount}">0</span></span>
                     <a th:href="@{/post/{id}(id=${pi.post.id})}">评论 (<span th:text="${pi.commentCount}">0</span>)</a>
                 </div>
-                <!-- 操作区 -->
                 <div class="post-ops">
                     <select onchange="changePostVisibility(this.dataset.postId, this.value)" th:attr="data-post-id=${pi.post.id}">
                         <option value="PUBLIC" th:selected="${pi.post.visibility == T(com.campus.model.Visibility).PUBLIC}">公开</option>
@@ -114,6 +115,10 @@
                 <span style="font-weight:normal;font-size:12px;color:#888;" th:text="'(可见 ' + ${postItems.size()} + ' 条)'"></span>
             </div>
             <div th:each="pi : ${postItems}" class="feed-item">
+                <!-- 管理员标记 -->
+                <div th:if="${pi.adminHiddenMark}" class="admin-mark admin-mark-hidden">[管理员视角] 此动态已被作者隐藏</div>
+                <div th:if="${pi.adminMissingPhotoMark}" class="admin-mark admin-mark-missing">[管理员视角] 内容提及照片但无照片附件</div>
+
                 <div class="feed-header">
                     <img th:src="${profileUser.avatar}" alt="">
                     <div class="feed-user-info">
@@ -132,11 +137,34 @@
                     <span style="color:#888;font-size:12px;">&#9829; <span th:text="${pi.likeCount}">0</span></span>
                     <a th:href="@{/post/{id}(id=${pi.post.id})}">评论 (<span th:text="${pi.commentCount}">0</span>)</a>
                 </div>
+                <!-- 管理员恢复按钮 -->
+                <div class="post-ops" th:if="${pi.adminHiddenMark}">
+                    <button class="btn btn-success btn-sm" th:attr="onclick='adminRestorePost(' + ${pi.post.id} + ')'">恢复此动态</button>
+                </div>
             </div>
             <div th:if="${#lists.isEmpty(postItems)}" class="card-body" style="text-align:center;color:#999;">暂无可见动态</div>
+        </div>
+
+        <!-- 管理员视角：被隐藏的动态（非PRIVATE） -->
+        <div class="card" th:if="${adminHiddenItems != null and !adminHiddenItems.isEmpty()}">
+            <div class="card-header" style="background:#fff3e0;">
+                管理员视角：被隐藏的动态
+                <span style="font-weight:normal;font-size:12px;color:#e65100;">（仅管理员可见，不包含仅自己可见的私密动态）</span>
+            </div>
+            <div th:each="pi : ${adminHiddenItems}" class="feed-item">
+                <div class="admin-mark admin-mark-hidden">[管理员视角] 此动态已被作者隐藏</div>
+                <div class="feed-content" th:text="${pi.post.content}">内容</div>
+                <div class="feed-photos" th:if="${pi.post.photoUrls.size() > 0}">
+                    <img th:each="url : ${pi.post.photoUrls}" th:src="${url}" alt="照片" loading="lazy" style="max-height:150px;width:auto;">
+                </div>
+                <div class="post-ops">
+                    <button class="btn btn-success btn-sm" th:attr="onclick='adminRestorePost(' + ${pi.post.id} + ')'">恢复此动态</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script th:replace="~{fragments :: scripts}"></script>
 </body>
+</html>

@@ -38,6 +38,11 @@ public class ApiController {
         return sessionHelper.getCurrentUserId();
     }
 
+    private boolean isAdmin() {
+        User u = userService.findById(uid());
+        return u != null && u.isAdmin();
+    }
+
     @PostMapping("/posts")
     public ResponseEntity<?> createPost(@RequestParam String content,
                                         @RequestParam Visibility visibility,
@@ -84,6 +89,31 @@ public class ApiController {
         return ResponseEntity.ok(Map.of("deleted", true));
     }
 
+    // 管理员恢复被隐藏的动态
+    @PostMapping("/posts/{postId}/admin-restore")
+    public ResponseEntity<?> adminRestorePost(@PathVariable Long postId) {
+        if (!isAdmin()) return ResponseEntity.status(403).body(Map.of("error", "无权操作", "hint", "仅管理员可恢复被隐藏的动态"));
+        Post post = postService.findById(postId);
+        if (post == null) return ResponseEntity.status(404).body(Map.of("error", "动态不存在", "hint", "该动态可能已被删除"));
+        if (post.getStatus() != PostStatus.HIDDEN) return ResponseEntity.badRequest().body(Map.of("error", "该动态未被隐藏", "hint", "只能恢复被隐藏的动态"));
+        // 管理员不能恢复PRIVATE的动态
+        if (post.getVisibility() == Visibility.PRIVATE && !post.getUserId().equals(uid())) {
+            return ResponseEntity.status(403).body(Map.of("error", "无法恢复私密动态", "hint", "仅自己可见的动态不允许管理员恢复"));
+        }
+        Post updated = postService.updateStatus(postId, PostStatus.PUBLISHED);
+        return ResponseEntity.ok(Map.of("restored", true, "post", updated));
+    }
+
+    // 删除自己的评论
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(@PathVariable Long commentId) {
+        Comment comment = commentService.findById(commentId);
+        if (comment == null) return ResponseEntity.status(404).body(Map.of("error", "评论不存在", "hint", "该评论可能已被删除"));
+        if (!comment.getUserId().equals(uid())) return ResponseEntity.status(403).body(Map.of("error", "无权删除此评论", "hint", "只能删除自己的评论"));
+        commentService.deleteById(commentId);
+        return ResponseEntity.ok(Map.of("deleted", true));
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<StatsDTO> getStats() {
         Set<Long> friendIds = friendService.getFriendIds(uid());
@@ -104,12 +134,10 @@ public class ApiController {
         if (req == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "操作无效", "hint", "不能加自己为好友"));
         }
-        // 根据已存在记录的状态返回不同反馈
         if (req.getStatus() == FriendRequest.Status.ACCEPTED) {
             return ResponseEntity.ok(Map.of("error", "你们已经是好友了", "hint", "无需重复申请", "status", "ALREADY_FRIEND", "requestId", req.getId()));
         }
         if (req.getStatus() == FriendRequest.Status.PENDING) {
-            // 区分是已有申请还是新创建的
             if (req.getFromUserId().equals(uid())) {
                 return ResponseEntity.ok(Map.of("message", "好友申请已发送", "status", "SENT", "requestId", req.getId()));
             } else {
@@ -166,10 +194,10 @@ public class ApiController {
         Post post = postService.findById(postId);
         if (post == null) return ResponseEntity.status(404).body(Map.of("error", "动态不存在", "hint", "该动态可能已被删除", "action", "go_home"));
         Set<Long> friendIds = friendService.getFriendIds(uid());
-        if (!isPostVisible(post, uid(), friendIds)) {
+        boolean isAdmin = isAdmin();
+        if (!isPostVisible(post, uid(), friendIds, isAdmin)) {
             return ResponseEntity.status(403).body(Map.of("error", "无权评论此动态", "reason", postService.getDeniedReason(post, uid(), friendIds), "hint", "只有可见动态才能评论", "action", "apply_friend"));
         }
-        // 检查动态状态
         if (post.getStatus() == PostStatus.HIDDEN) {
             return ResponseEntity.badRequest().body(Map.of("error", "动态已隐藏", "hint", "隐藏状态的动态不能评论，请先恢复"));
         }
@@ -206,8 +234,13 @@ public class ApiController {
         return ResponseEntity.ok(friendService.getRelationship(uid(), targetUserId));
     }
 
-    private boolean isPostVisible(Post p, Long currentUserId, Set<Long> friendIds) {
-        if (p.getStatus() == PostStatus.HIDDEN || p.getStatus() == PostStatus.DRAFT) {
+    private boolean isPostVisible(Post p, Long currentUserId, Set<Long> friendIds, boolean isAdmin) {
+        if (p.getStatus() == PostStatus.HIDDEN) {
+            if (p.getUserId().equals(currentUserId)) return true;
+            if (isAdmin && p.getVisibility() != Visibility.PRIVATE) return true;
+            return false;
+        }
+        if (p.getStatus() == PostStatus.DRAFT) {
             return p.getUserId().equals(currentUserId);
         }
         return switch (p.getVisibility()) {

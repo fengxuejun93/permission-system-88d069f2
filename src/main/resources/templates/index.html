@@ -34,13 +34,11 @@
         <div class="card">
             <div class="card-body" style="padding:10px 16px;">
                 <form method="GET" action="/" id="filterForm" style="display:flex;flex-direction:column;gap:8px;">
-                    <!-- 搜索行 -->
                     <div style="display:flex;gap:8px;align-items:center;">
                         <span style="font-size:13px;color:#666;font-weight:600;">搜索：</span>
                         <input type="text" name="keyword" class="search-input" placeholder="搜索发布人、班级、动态文字、照片说明..." th:value="${filterKeyword}">
                         <button type="submit" class="btn btn-primary btn-sm">搜索</button>
                     </div>
-                    <!-- 筛选行 -->
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                         <span style="font-size:13px;color:#666;font-weight:600;">筛选：</span>
                         <select name="visibility" class="filter-select" onchange="applyFilter()">
@@ -85,12 +83,19 @@
                 <span th:if="${filterVisibility != null or filterStatus != null or filterAuthorId != null or filterKeyword != null or filterRelationship != null or filterHasComment != null}" style="font-weight:normal;font-size:12px;color:#e65100;">（已筛选）</span>
             </div>
             <div th:each="item : ${feedItems}" class="feed-item">
+                <!-- 管理员标记：被隐藏/缺照片 -->
+                <div th:if="${item.adminHidden}" class="admin-mark admin-mark-hidden">[管理员视角] 此动态已被作者隐藏</div>
+                <div th:if="${item.adminMissingPhoto}" class="admin-mark admin-mark-missing">[管理员视角] 内容提及照片但无照片附件</div>
+
                 <div class="feed-header">
                     <a th:href="@{/profile/{id}(id=${item.author.id})}"><img th:src="${item.author.avatar}" alt=""></a>
                     <div class="feed-user-info">
                         <a th:href="@{/profile/{id}(id=${item.author.id})}" class="feed-user-name" th:text="${item.author.displayName}">用户</a>
                         <div class="feed-meta">
                             <span th:text="${item.author.className}">班级</span>
+                            <!-- 角色标识 -->
+                            <span th:if="${item.author.role == T(com.campus.model.UserRole).SYSTEM_ADMIN}" class="role-tag role-tag-sys">系统管理员</span>
+                            <span th:if="${item.author.role == T(com.campus.model.UserRole).CLASS_ADMIN}" class="role-tag role-tag-class">班级管理员</span>
                             <span class="visibility-tag" th:classappend="${item.post.visibility.toString().toLowerCase()}" th:text="${item.post.visibility == T(com.campus.model.Visibility).PUBLIC} ? '公开' : (${item.post.visibility == T(com.campus.model.Visibility).FRIENDS} ? '好友可见' : '仅自己可见')"></span>
                             <span class="status-tag" th:classappend="${item.post.status.toString().toLowerCase()}" th:if="${item.post.status != T(com.campus.model.PostStatus).PUBLISHED}" th:text="${item.post.status == T(com.campus.model.PostStatus).DRAFT} ? '草稿' : '已隐藏'"></span>
                         </div>
@@ -108,6 +113,7 @@
                     </span>
                     <a th:href="@{/post/{id}(id=${item.post.id})}">评论 (<span th:text="${item.commentCount}">0</span>)</a>
                 </div>
+                <!-- 本人操作区 -->
                 <div class="post-ops" th:if="${item.post.userId == currentUserId}">
                     <select onchange="changePostVisibility(this.dataset.postId, this.value)" th:attr="data-post-id=${item.post.id}">
                         <option value="PUBLIC" th:selected="${item.post.visibility == T(com.campus.model.Visibility).PUBLIC}">公开</option>
@@ -118,6 +124,10 @@
                     <button th:if="${item.post.status == T(com.campus.model.PostStatus).HIDDEN}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${item.post.id} + ', &quot;PUBLISHED&quot;)'">恢复</button>
                     <button th:if="${item.post.status == T(com.campus.model.PostStatus).DRAFT}" class="btn btn-success btn-sm" th:attr="onclick='changePostStatus(' + ${item.post.id} + ', &quot;PUBLISHED&quot;)'">发布</button>
                     <button class="btn btn-danger btn-sm" th:attr="onclick='deletePost(' + ${item.post.id} + ')'">删除</button>
+                </div>
+                <!-- 管理员操作区（恢复被他人隐藏的非私密动态） -->
+                <div class="post-ops" th:if="${isAdmin and item.post.userId != currentUserId and item.post.status == T(com.campus.model.PostStatus).HIDDEN and item.post.visibility != T(com.campus.model.Visibility).PRIVATE}">
+                    <button class="btn btn-success btn-sm" th:attr="onclick='adminRestorePost(' + ${item.post.id} + ')'">恢复此动态</button>
                 </div>
             </div>
             <!-- 空状态 -->
