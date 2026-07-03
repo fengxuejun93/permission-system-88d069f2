@@ -55,24 +55,24 @@
         <div class="card-header">数据看板</div>
         <div class="card-body" style="padding:10px;">
             <div class="stats-grid">
-                <a class="stat-item stat-clickable" href="/" title="我的动态数">
+                <a class="stat-item stat-clickable" th:href="@{/(relationship='SELF')}" title="我的动态数">
                     <div class="stat-num" th:text="${stats.postCount}">0</div>
                     <div class="stat-label">我的动态</div>
                 </a>
-                <a class="stat-item stat-clickable" th:href="@{/(visibility='PUBLIC')}" title="可见动态数">
+                <a class="stat-item stat-clickable" href="/" title="可见动态数">
                     <div class="stat-num" th:text="${stats.visiblePostCount}">0</div>
                     <div class="stat-label">可见动态</div>
                 </a>
-                <a class="stat-item stat-clickable" href="/friends" title="好友数">
+                <a class="stat-item stat-clickable" th:href="@{/friends(group='friends')}" title="好友数">
                     <div class="stat-num" th:text="${stats.friendCount}">0</div>
                     <div class="stat-label">好友数</div>
                 </a>
-                <a class="stat-item stat-clickable" href="/friends" title="待处理申请">
+                <a class="stat-item stat-clickable" th:href="@{/friends(group='pending')}" title="待处理申请">
                     <div class="stat-num" th:text="${stats.pendingRequestCount}">0</div>
                     <div class="stat-label">待处理申请</div>
                 </a>
             </div>
-            <div style="margin-top:8px;font-size:11px;color:#aaa;text-align:center;">照片统计</div>
+            <div style="margin-top:8px;font-size:11px;color:#aaa;text-align:center;">照片统计（点击筛选对应可见范围）</div>
             <div class="stats-grid" style="margin-top:4px;">
                 <a class="stat-item stat-clickable" th:href="@{/(visibility='PUBLIC')}" title="公开照片">
                     <div class="stat-num" th:text="${stats.publicPhotoCount}">0</div>
@@ -86,17 +86,21 @@
                     <div class="stat-num" th:text="${stats.privatePhotoCount}">0</div>
                     <div class="stat-label">私密照片</div>
                 </a>
-                <div class="stat-item">
+                <a class="stat-item stat-clickable" href="/" title="可见照片">
                     <div class="stat-num" th:text="${stats.visiblePhotoCount}">0</div>
                     <div class="stat-label">可见照片</div>
-                </div>
+                </a>
             </div>
-            <div style="margin-top:8px;font-size:11px;color:#aaa;text-align:center;">评论统计</div>
+            <div style="margin-top:8px;font-size:11px;color:#aaa;text-align:center;">评论统计（点击筛选有评论动态）</div>
             <div class="stats-grid" style="margin-top:4px;">
-                <div class="stat-item">
+                <a class="stat-item stat-clickable" th:href="@{/(hasComment='yes')}" title="有评论的动态">
                     <div class="stat-num" th:text="${stats.commentCount}">0</div>
                     <div class="stat-label">可见评论</div>
-                </div>
+                </a>
+                <a class="stat-item stat-clickable" th:href="@{/(relationship='FRIEND')}" title="好友的动态">
+                    <div class="stat-num" th:text="${stats.friendCount}">0</div>
+                    <div class="stat-label">好友动态</div>
+                </a>
             </div>
         </div>
     </div>
@@ -143,17 +147,22 @@ function handleApiError(r) {
     });
 }
 
+// 操作后刷新页面（保留当前筛选参数）
+function reloadWithFilters() {
+    location.reload();
+}
+
 function acceptRequest(id) {
     fetch('/api/friend-request/' + id + '/accept', {method: 'POST'})
         .then(r => handleApiError(r))
-        .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function rejectRequest(id) {
     fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
         .then(r => handleApiError(r))
-        .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
@@ -189,7 +198,7 @@ function publishPost() {
 
     fetch('/api/posts', {method: 'POST', body: formData})
         .then(r => handleApiError(r))
-        .then(() => { showToast(status === 'DRAFT' ? '已存为草稿' : '发布成功', 'success'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast(status === 'DRAFT' ? '已存为草稿' : '发布成功', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '发布失败', 'error'); });
 }
 
@@ -203,7 +212,7 @@ function submitComment(postId, replyToId) {
 
     fetch('/api/posts/' + postId + '/comments', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: params})
         .then(r => handleApiError(r))
-        .then(() => { showToast('评论成功', 'success'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('评论成功', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => {
             var hint = e.data ? (e.data.hint || e.data.reason || e.message) : e.message;
             showToast(hint, 'error');
@@ -244,14 +253,14 @@ function toggleLike(postId, el) {
 function acceptRequestOnProfile(id) {
     fetch('/api/friend-request/' + id + '/accept', {method: 'POST'})
         .then(r => handleApiError(r))
-        .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('已同意好友申请', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
 function rejectRequestOnProfile(id) {
     fetch('/api/friend-request/' + id + '/reject', {method: 'POST'})
         .then(r => handleApiError(r))
-        .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('已拒绝好友申请', 'error'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
@@ -260,7 +269,7 @@ function changePostStatus(postId, newStatus) {
     formData.append('status', newStatus);
     fetch('/api/posts/' + postId + '/status', {method: 'POST', body: formData})
         .then(r => handleApiError(r))
-        .then(() => { showToast('状态已更新', 'success'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('状态已更新', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 
@@ -269,7 +278,7 @@ function changePostVisibility(postId, newVisibility) {
     formData.append('visibility', newVisibility);
     fetch('/api/posts/' + postId + '/visibility', {method: 'POST', body: formData})
         .then(r => handleApiError(r))
-        .then(() => { showToast('可见范围已更新', 'success'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('可见范围已更新', 'success'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => {
             if (e.data && e.data.retry) {
                 showToast(e.data.error + ' - ' + e.data.hint, 'error');
@@ -283,7 +292,7 @@ function deletePost(postId) {
     if (!confirm('确定删除此动态？')) return;
     fetch('/api/posts/' + postId, {method: 'DELETE'})
         .then(r => handleApiError(r))
-        .then(() => { showToast('已删除', 'error'); setTimeout(() => location.reload(), 600); })
+        .then(() => { showToast('已删除', 'error'); setTimeout(() => reloadWithFilters(), 600); })
         .catch(e => { showToast(e.data ? e.data.hint || e.message : '操作失败', 'error'); });
 }
 </script>

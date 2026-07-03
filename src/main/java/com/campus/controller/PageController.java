@@ -69,6 +69,9 @@ public class PageController {
     public String index(@RequestParam(required = false) String visibility,
                         @RequestParam(required = false) String status,
                         @RequestParam(required = false) String authorId,
+                        @RequestParam(required = false) String keyword,
+                        @RequestParam(required = false) String relationship,
+                        @RequestParam(required = false) String hasComment,
                         Model model) {
         addCommonAttributes(model);
 
@@ -89,6 +92,33 @@ public class PageController {
             Long aid = Long.valueOf(authorId);
             posts = posts.stream().filter(p -> p.getUserId().equals(aid)).collect(Collectors.toList());
         }
+        // 关键词搜索：匹配发布人姓名/班级、动态文字、照片说明(url)
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.toLowerCase();
+            posts = posts.stream().filter(p -> {
+                User author = userService.findById(p.getUserId());
+                boolean matchAuthor = author != null && (author.getDisplayName().toLowerCase().contains(kw)
+                        || author.getClassName().toLowerCase().contains(kw));
+                boolean matchContent = p.getContent().toLowerCase().contains(kw);
+                boolean matchPhoto = p.getPhotoUrls().stream().anyMatch(url -> url.toLowerCase().contains(kw));
+                return matchAuthor || matchContent || matchPhoto;
+            }).collect(Collectors.toList());
+        }
+        // 按关系类型筛选
+        if (relationship != null && !relationship.isBlank()) {
+            posts = posts.stream().filter(p -> {
+                String rel = friendService.getRelationship(uid, p.getUserId());
+                return rel.equals(relationship);
+            }).collect(Collectors.toList());
+        }
+        // 按是否有评论筛选
+        if (hasComment != null && !hasComment.isBlank()) {
+            boolean wantComment = "yes".equals(hasComment);
+            posts = posts.stream().filter(p -> {
+                int cnt = commentService.getCommentsByPostId(p.getId()).size();
+                return wantComment ? cnt > 0 : cnt == 0;
+            }).collect(Collectors.toList());
+        }
 
         List<Map<String, Object>> feedItems = new ArrayList<>();
         for (Post post : posts) {
@@ -105,6 +135,9 @@ public class PageController {
         model.addAttribute("filterVisibility", visibility);
         model.addAttribute("filterStatus", status);
         model.addAttribute("filterAuthorId", authorId);
+        model.addAttribute("filterKeyword", keyword);
+        model.addAttribute("filterRelationship", relationship);
+        model.addAttribute("filterHasComment", hasComment);
         return "index";
     }
 
@@ -172,7 +205,10 @@ public class PageController {
     }
 
     @GetMapping("/friends")
-    public String friends(Model model) {
+    public String friends(@RequestParam(required = false) String keyword,
+                          @RequestParam(required = false) String online,
+                          @RequestParam(required = false) String group,
+                          Model model) {
         addCommonAttributes(model);
 
         Long uid = currentUserId();
@@ -193,10 +229,73 @@ public class PageController {
             }
         }
 
-        model.addAttribute("friends", friends);
-        model.addAttribute("sentRequests", sentRequests);
-        model.addAttribute("receivedRequests", pendingRequests);
-        model.addAttribute("discoverUsers", discoverUsers);
+        // 好友搜索筛选
+        String kw = (keyword != null && !keyword.isBlank()) ? keyword.toLowerCase() : null;
+        boolean filterOnline = "true".equals(online);
+        boolean filterOffline = "false".equals(online);
+
+        List<User> filteredFriends = friends;
+        if (kw != null) {
+            filteredFriends = filteredFriends.stream().filter(u ->
+                    u.getDisplayName().toLowerCase().contains(kw) || u.getClassName().toLowerCase().contains(kw)
+            ).collect(Collectors.toList());
+        }
+        if ("true".equals(online) || "false".equals(online)) {
+            boolean wantOnline = "true".equals(online);
+            filteredFriends = filteredFriends.stream().filter(u -> u.isOnline() == wantOnline).collect(Collectors.toList());
+        }
+
+        // 好友申请搜索
+        List<FriendRequest> filteredReceived = pendingRequests;
+        List<FriendRequest> filteredSent = sentRequests;
+        if (kw != null) {
+            filteredReceived = filteredReceived.stream().filter(r -> {
+                User from = userService.findById(r.getFromUserId());
+                return from != null && (from.getDisplayName().toLowerCase().contains(kw) || from.getClassName().toLowerCase().contains(kw));
+            }).collect(Collectors.toList());
+            filteredSent = filteredSent.stream().filter(r -> {
+                User to = userService.findById(r.getToUserId());
+                return to != null && (to.getDisplayName().toLowerCase().contains(kw) || to.getClassName().toLowerCase().contains(kw));
+            }).collect(Collectors.toList());
+        }
+
+        // 发现同学搜索
+        List<Map<String, Object>> filteredDiscover = discoverUsers;
+        if (kw != null) {
+            filteredDiscover = filteredDiscover.stream().filter(item -> {
+                User u = (User) item.get("user");
+                return u.getDisplayName().toLowerCase().contains(kw) || u.getClassName().toLowerCase().contains(kw);
+            }).collect(Collectors.toList());
+        }
+        if ("true".equals(online) || "false".equals(online)) {
+            boolean wantOnline = "true".equals(online);
+            filteredDiscover = filteredDiscover.stream().filter(item -> {
+                User u = (User) item.get("user");
+                return u.isOnline() == wantOnline;
+            }).collect(Collectors.toList());
+        }
+
+        // 统计（分组筛选用）
+        int friendCount = friends.size();
+        int pendingReceivedCount = pendingRequests.size();
+        int pendingSentCount = sentRequests.size();
+        int strangerCount = discoverUsers.size();
+
+        model.addAttribute("friends", filteredFriends);
+        model.addAttribute("allFriends", friends);
+        model.addAttribute("sentRequests", filteredSent);
+        model.addAttribute("allSentRequests", sentRequests);
+        model.addAttribute("receivedRequests", filteredReceived);
+        model.addAttribute("allReceivedRequests", pendingRequests);
+        model.addAttribute("discoverUsers", filteredDiscover);
+        model.addAttribute("allDiscoverUsers", discoverUsers);
+        model.addAttribute("filterKeyword", keyword);
+        model.addAttribute("filterOnline", online);
+        model.addAttribute("filterGroup", group);
+        model.addAttribute("friendCount", friendCount);
+        model.addAttribute("pendingReceivedCount", pendingReceivedCount);
+        model.addAttribute("pendingSentCount", pendingSentCount);
+        model.addAttribute("strangerCount", strangerCount);
         return "friends";
     }
 

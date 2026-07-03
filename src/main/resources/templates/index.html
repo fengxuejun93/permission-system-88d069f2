@@ -30,28 +30,50 @@
             </div>
         </div>
 
-        <!-- 筛选区域 -->
+        <!-- 搜索筛选区域 -->
         <div class="card">
             <div class="card-body" style="padding:10px 16px;">
-                <form method="GET" action="/" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    <span style="font-size:13px;color:#666;font-weight:600;">筛选：</span>
-                    <select name="visibility" class="filter-select" onchange="applyFilter()">
-                        <option value="">全部可见范围</option>
-                        <option value="PUBLIC" th:selected="${filterVisibility == 'PUBLIC'}">公开</option>
-                        <option value="FRIENDS" th:selected="${filterVisibility == 'FRIENDS'}">仅好友</option>
-                        <option value="PRIVATE" th:selected="${filterVisibility == 'PRIVATE'}">仅自己</option>
-                    </select>
-                    <select name="status" class="filter-select" onchange="applyFilter()">
-                        <option value="">全部状态</option>
-                        <option value="PUBLISHED" th:selected="${filterStatus == 'PUBLISHED'}">已发布</option>
-                        <option value="DRAFT" th:selected="${filterStatus == 'DRAFT'}">草稿</option>
-                        <option value="HIDDEN" th:selected="${filterStatus == 'HIDDEN'}">已隐藏</option>
-                    </select>
-                    <select name="authorId" class="filter-select" onchange="applyFilter()">
-                        <option value="">全部作者</option>
-                        <option th:each="u : ${allUsers}" th:value="${u.id}" th:selected="${filterAuthorId != null && filterAuthorId == u.id.toString()}" th:text="${u.displayName}">用户</option>
-                    </select>
-                    <a href="/" class="btn btn-outline btn-sm">清除筛选</a>
+                <form method="GET" action="/" id="filterForm" style="display:flex;flex-direction:column;gap:8px;">
+                    <!-- 搜索行 -->
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <span style="font-size:13px;color:#666;font-weight:600;">搜索：</span>
+                        <input type="text" name="keyword" class="search-input" placeholder="搜索发布人、班级、动态文字、照片说明..." th:value="${filterKeyword}">
+                        <button type="submit" class="btn btn-primary btn-sm">搜索</button>
+                    </div>
+                    <!-- 筛选行 -->
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <span style="font-size:13px;color:#666;font-weight:600;">筛选：</span>
+                        <select name="visibility" class="filter-select" onchange="applyFilter()">
+                            <option value="">全部可见范围</option>
+                            <option value="PUBLIC" th:selected="${filterVisibility == 'PUBLIC'}">公开</option>
+                            <option value="FRIENDS" th:selected="${filterVisibility == 'FRIENDS'}">仅好友</option>
+                            <option value="PRIVATE" th:selected="${filterVisibility == 'PRIVATE'}">仅自己</option>
+                        </select>
+                        <select name="status" class="filter-select" onchange="applyFilter()">
+                            <option value="">全部状态</option>
+                            <option value="PUBLISHED" th:selected="${filterStatus == 'PUBLISHED'}">已发布</option>
+                            <option value="DRAFT" th:selected="${filterStatus == 'DRAFT'}">草稿</option>
+                            <option value="HIDDEN" th:selected="${filterStatus == 'HIDDEN'}">已隐藏</option>
+                        </select>
+                        <select name="authorId" class="filter-select" onchange="applyFilter()">
+                            <option value="">全部作者</option>
+                            <option th:each="u : ${allUsers}" th:value="${u.id}" th:selected="${filterAuthorId != null && filterAuthorId == u.id.toString()}" th:text="${u.displayName}">用户</option>
+                        </select>
+                        <select name="relationship" class="filter-select" onchange="applyFilter()">
+                            <option value="">全部关系</option>
+                            <option value="SELF" th:selected="${filterRelationship == 'SELF'}">自己</option>
+                            <option value="FRIEND" th:selected="${filterRelationship == 'FRIEND'}">好友</option>
+                            <option value="SENT" th:selected="${filterRelationship == 'SENT'}">已申请</option>
+                            <option value="RECEIVED" th:selected="${filterRelationship == 'RECEIVED'}">待我处理</option>
+                            <option value="NONE" th:selected="${filterRelationship == 'NONE'}">陌生人</option>
+                        </select>
+                        <select name="hasComment" class="filter-select" onchange="applyFilter()">
+                            <option value="">有无评论</option>
+                            <option value="yes" th:selected="${filterHasComment == 'yes'}">有评论</option>
+                            <option value="no" th:selected="${filterHasComment == 'no'}">无评论</option>
+                        </select>
+                        <a href="/" class="btn btn-outline btn-sm">清除筛选</a>
+                    </div>
                 </form>
             </div>
         </div>
@@ -60,7 +82,7 @@
         <div class="card">
             <div class="card-header">
                 动态
-                <span th:if="${filterVisibility != null or filterStatus != null or filterAuthorId != null}" style="font-weight:normal;font-size:12px;color:#e65100;">（已筛选）</span>
+                <span th:if="${filterVisibility != null or filterStatus != null or filterAuthorId != null or filterKeyword != null or filterRelationship != null or filterHasComment != null}" style="font-weight:normal;font-size:12px;color:#e65100;">（已筛选）</span>
             </div>
             <div th:each="item : ${feedItems}" class="feed-item">
                 <div class="feed-header">
@@ -98,10 +120,15 @@
                     <button class="btn btn-danger btn-sm" th:attr="onclick='deletePost(' + ${item.post.id} + ')'">删除</button>
                 </div>
             </div>
-            <div th:if="${#lists.isEmpty(feedItems)}" class="card-body" style="text-align:center;color:#999;padding:30px;">
-                <div style="font-size:24px;margin-bottom:8px;">&#128269;</div>
-                <div>无匹配的动态</div>
-                <div style="font-size:12px;margin-top:4px;">尝试调整筛选条件，或<a href="/">清除筛选</a></div>
+            <!-- 空状态 -->
+            <div th:if="${#lists.isEmpty(feedItems)}" class="card-body empty-state">
+                <div class="empty-icon">&#128269;</div>
+                <div class="empty-title">无匹配的动态</div>
+                <div class="empty-desc">尝试调整搜索或筛选条件</div>
+                <div class="empty-actions">
+                    <a href="/" class="btn btn-outline btn-sm">清除筛选，返回全部</a>
+                    <a href="/friends" class="btn btn-primary btn-sm">去好友页申请好友</a>
+                </div>
             </div>
         </div>
     </div>
@@ -110,7 +137,7 @@
 <script th:replace="~{fragments :: scripts}"></script>
 <script>
 function applyFilter() {
-    var form = document.querySelector('form[action="/"]');
+    var form = document.getElementById('filterForm');
     form.submit();
 }
 </script>

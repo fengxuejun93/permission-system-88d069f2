@@ -8,20 +8,65 @@
     <aside th:replace="~{fragments :: sidebar}"></aside>
 
     <div class="content">
-        <!-- 标签页 -->
+        <!-- 搜索筛选区 -->
         <div class="card" style="margin-bottom:0;">
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab('friends')">我的好友</div>
-                <div class="tab" onclick="switchTab('requests')">好友申请</div>
-                <div class="tab" onclick="switchTab('discover')">发现同学</div>
+            <div class="card-body" style="padding:10px 16px;">
+                <form method="GET" action="/friends" id="friendFilterForm" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:13px;color:#666;font-weight:600;">搜索：</span>
+                    <input type="text" name="keyword" class="search-input" placeholder="搜索姓名、班级..." th:value="${filterKeyword}" style="width:200px;">
+                    <select name="online" class="filter-select" onchange="applyFriendFilter()">
+                        <option value="">全部在线状态</option>
+                        <option value="true" th:selected="${filterOnline == 'true'}">在线</option>
+                        <option value="false" th:selected="${filterOnline == 'false'}">离线</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">搜索</button>
+                    <a href="/friends" class="btn btn-outline btn-sm">清除筛选</a>
+                </form>
             </div>
         </div>
 
-        <!-- 我的好友 -->
-        <div id="tab-friends" class="card">
+        <!-- 统计分组区 -->
+        <div class="card" style="margin-bottom:0;">
+            <div class="card-body" style="padding:10px 16px;">
+                <div class="stats-grid friend-stats">
+                    <a class="stat-item stat-clickable" th:href="@{/friends(group='friends')}" th:classappend="${filterGroup == 'friends' or filterGroup == null or filterGroup == ''} ? 'stat-active'">
+                        <div class="stat-num" th:text="${friendCount}">0</div>
+                        <div class="stat-label">好友</div>
+                    </a>
+                    <a class="stat-item stat-clickable" th:href="@{/friends(group='pending')}" th:classappend="${filterGroup == 'pending'} ? 'stat-active'">
+                        <div class="stat-num" th:text="${pendingReceivedCount}">0</div>
+                        <div class="stat-label">待我处理</div>
+                    </a>
+                    <a class="stat-item stat-clickable" th:href="@{/friends(group='sent')}" th:classappend="${filterGroup == 'sent'} ? 'stat-active'">
+                        <div class="stat-num" th:text="${pendingSentCount}">0</div>
+                        <div class="stat-label">已发送</div>
+                    </a>
+                    <a class="stat-item stat-clickable" th:href="@{/friends(group='stranger')}" th:classappend="${filterGroup == 'stranger'} ? 'stat-active'">
+                        <div class="stat-num" th:text="${strangerCount}">0</div>
+                        <div class="stat-label">陌生人</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 好友列表（默认或group=friends时显示） -->
+        <div id="tab-friends" class="card" th:if="${filterGroup == null or filterGroup == '' or filterGroup == 'friends'}">
             <div class="card-header">我的好友 (<span th:text="${friends.size()}">0</span>)</div>
             <div class="card-body">
-                <div th:if="${#lists.isEmpty(friends)}" style="color:#999;text-align:center;">还没有好友，去发现同学吧</div>
+                <div th:if="${#lists.isEmpty(friends)}" class="empty-state">
+                    <div class="empty-icon">&#128101;</div>
+                    <div class="empty-title" th:if="${filterKeyword != null or filterOnline != null}">没有匹配的好友</div>
+                    <div class="empty-desc" th:if="${filterKeyword != null or filterOnline != null}">尝试调整搜索或筛选条件</div>
+                    <div class="empty-actions" th:if="${filterKeyword != null or filterOnline != null}">
+                        <a href="/friends" class="btn btn-outline btn-sm">清除筛选，返回全部</a>
+                        <a th:href="@{/friends(group='stranger')}" class="btn btn-primary btn-sm">去发现同学</a>
+                    </div>
+                    <div class="empty-title" th:if="${filterKeyword == null and filterOnline == null}">还没有好友</div>
+                    <div class="empty-desc" th:if="${filterKeyword == null and filterOnline == null}">去发现同学，添加好友吧</div>
+                    <div class="empty-actions" th:if="${filterKeyword == null and filterOnline == null}">
+                        <a th:href="@{/friends(group='stranger')}" class="btn btn-primary btn-sm">发现同学</a>
+                    </div>
+                </div>
                 <div th:each="f : ${friends}" class="friend-item">
                     <img th:src="${f.avatar}" alt="">
                     <div class="friend-info">
@@ -39,11 +84,20 @@
             </div>
         </div>
 
-        <!-- 好友申请 -->
-        <div id="tab-requests" class="card" style="display:none;">
-            <div class="card-header">收到的申请</div>
+        <!-- 待我处理（收到的申请） -->
+        <div id="tab-pending" class="card" th:if="${filterGroup == 'pending'}">
+            <div class="card-header">待我处理的申请 (<span th:text="${receivedRequests.size()}">0</span>)</div>
             <div class="card-body">
-                <div th:if="${#lists.isEmpty(receivedRequests)}" style="color:#999;text-align:center;">暂无待处理申请</div>
+                <div th:if="${#lists.isEmpty(receivedRequests)}" class="empty-state">
+                    <div class="empty-icon">&#128236;</div>
+                    <div class="empty-title" th:if="${filterKeyword != null}">没有匹配的申请</div>
+                    <div class="empty-desc" th:if="${filterKeyword != null}">尝试调整搜索条件</div>
+                    <div class="empty-title" th:if="${filterKeyword == null}">暂无待处理申请</div>
+                    <div class="empty-desc" th:if="${filterKeyword == null}">所有申请都已处理</div>
+                    <div class="empty-actions">
+                        <a href="/friends" class="btn btn-outline btn-sm">返回全部</a>
+                    </div>
+                </div>
                 <div th:each="req : ${receivedRequests}" class="request-item">
                     <img th:src="${@userService.findById(req.fromUserId).avatar}" alt="">
                     <div class="request-info">
@@ -56,25 +110,50 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="card-header" style="margin-top:8px;">发出的申请</div>
+        <!-- 已发送 -->
+        <div id="tab-sent" class="card" th:if="${filterGroup == 'sent'}">
+            <div class="card-header">已发送的申请 (<span th:text="${sentRequests.size()}">0</span>)</div>
             <div class="card-body">
-                <div th:if="${#lists.isEmpty(sentRequests)}" style="color:#999;text-align:center;">暂无发出的申请</div>
+                <div th:if="${#lists.isEmpty(sentRequests)}" class="empty-state">
+                    <div class="empty-icon">&#128228;</div>
+                    <div class="empty-title" th:if="${filterKeyword != null}">没有匹配的已发送申请</div>
+                    <div class="empty-desc" th:if="${filterKeyword != null}">尝试调整搜索条件</div>
+                    <div class="empty-title" th:if="${filterKeyword == null}">暂无发出的申请</div>
+                    <div class="empty-desc" th:if="${filterKeyword == null}">去发现同学，添加好友吧</div>
+                    <div class="empty-actions">
+                        <a href="/friends" class="btn btn-outline btn-sm">返回全部</a>
+                        <a th:href="@{/friends(group='stranger')}" class="btn btn-primary btn-sm">发现同学</a>
+                    </div>
+                </div>
                 <div th:each="req : ${sentRequests}" class="request-item">
                     <img th:src="${@userService.findById(req.toUserId).avatar}" alt="">
                     <div class="request-info">
                         <span class="request-name" th:text="${@userService.findById(req.toUserId).displayName}">用户</span>
+                        <div style="font-size:11px;color:#aaa;" th:text="${@userService.findById(req.toUserId).className}">班级</div>
                     </div>
                     <span style="font-size:12px;color:#e65100;">等待回复</span>
                 </div>
             </div>
         </div>
 
-        <!-- 发现同学 -->
-        <div id="tab-discover" class="card" style="display:none;">
-            <div class="card-header">发现同学</div>
+        <!-- 陌生人/发现同学 -->
+        <div id="tab-stranger" class="card" th:if="${filterGroup == 'stranger'}">
+            <div class="card-header">发现同学 (<span th:text="${discoverUsers.size()}">0</span>)</div>
             <div class="card-body">
-                <div th:if="${#lists.isEmpty(discoverUsers)}" style="color:#999;text-align:center;">所有同学都已经是你的好友了</div>
+                <div th:if="${#lists.isEmpty(discoverUsers)}" class="empty-state">
+                    <div class="empty-icon">&#127758;</div>
+                    <div class="empty-title" th:if="${filterKeyword != null or filterOnline != null}">没有匹配的同学</div>
+                    <div class="empty-desc" th:if="${filterKeyword != null or filterOnline != null}">尝试调整搜索或筛选条件</div>
+                    <div class="empty-actions" th:if="${filterKeyword != null or filterOnline != null}">
+                        <a href="/friends?group=stranger" class="btn btn-outline btn-sm">清除筛选</a>
+                    </div>
+                    <div class="empty-title" th:if="${filterKeyword == null and filterOnline == null}">所有同学都已经是你的好友了</div>
+                    <div class="empty-actions" th:if="${filterKeyword == null and filterOnline == null}">
+                        <a href="/friends" class="btn btn-outline btn-sm">返回全部</a>
+                    </div>
+                </div>
                 <div th:each="du : ${discoverUsers}" class="friend-item">
                     <img th:src="${du.user.avatar}" alt="">
                     <div class="friend-info">
@@ -98,19 +177,118 @@
                 </div>
             </div>
         </div>
+
+        <!-- 无分组时的完整标签页视图（兼容直接访问/friends） -->
+        <th:block th:if="${filterGroup == null or filterGroup == ''}">
+            <!-- 待处理申请快捷区 -->
+            <div class="card" th:if="${pendingReceivedCount > 0}">
+                <div class="card-header">
+                    待处理申请
+                    <span class="badge" th:text="${pendingReceivedCount}">0</span>
+                    <a th:href="@{/friends(group='pending')}" style="font-size:12px;font-weight:normal;margin-left:auto;">查看全部</a>
+                </div>
+                <div class="card-body">
+                    <div th:each="req : ${allReceivedRequests}" class="request-item">
+                        <img th:src="${@userService.findById(req.fromUserId).avatar}" alt="">
+                        <div class="request-info">
+                            <a th:href="@{/profile/{id}(id=${req.fromUserId})}" class="request-name" th:text="${@userService.findById(req.fromUserId).displayName}">用户</a>
+                            <div style="font-size:11px;color:#aaa;" th:text="${@userService.findById(req.fromUserId).className}">班级</div>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn btn-success btn-sm" th:attr="onclick='acceptRequest(' + ${req.id} + ')'">同意</button>
+                            <button class="btn btn-danger btn-sm" th:attr="onclick='rejectRequest(' + ${req.id} + ')'">拒绝</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已发送快捷区 -->
+            <div class="card" th:if="${pendingSentCount > 0}">
+                <div class="card-header">
+                    已发送申请
+                    <a th:href="@{/friends(group='sent')}" style="font-size:12px;font-weight:normal;margin-left:auto;">查看全部</a>
+                </div>
+                <div class="card-body">
+                    <div th:each="req : ${allSentRequests}" class="request-item">
+                        <img th:src="${@userService.findById(req.toUserId).avatar}" alt="">
+                        <div class="request-info">
+                            <span class="request-name" th:text="${@userService.findById(req.toUserId).displayName}">用户</span>
+                            <div style="font-size:11px;color:#aaa;" th:text="${@userService.findById(req.toUserId).className}">班级</div>
+                        </div>
+                        <span style="font-size:12px;color:#e65100;">等待回复</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 发现同学快捷区 -->
+            <div class="card" th:if="${strangerCount > 0}">
+                <div class="card-header">
+                    发现同学
+                    <a th:href="@{/friends(group='stranger')}" style="font-size:12px;font-weight:normal;margin-left:auto;">查看全部</a>
+                </div>
+                <div class="card-body">
+                    <div th:each="du : ${allDiscoverUsers}" class="friend-item">
+                        <img th:src="${du.user.avatar}" alt="">
+                        <div class="friend-info">
+                            <a th:href="@{/profile/{id}(id=${du.user.id})}" class="friend-name" th:text="${du.user.displayName}">同学</a>
+                            <div class="friend-meta">
+                                <span th:text="${du.user.className}">班级</span>
+                                <span style="margin-left:8px;">
+                                    <span class="online-dot" th:classappend="${du.user.online} ? 'on' : 'off'"></span>
+                                    <span th:text="${du.user.online} ? '在线' : '离线'">在线</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <button th:if="${du.relationship == 'NONE'}" class="btn btn-primary btn-sm" th:attr="onclick='sendRequest(' + ${du.user.id} + ', this)'">加好友</button>
+                            <button th:if="${du.relationship == 'SENT'}" class="btn btn-sm btn-outline" disabled>已申请</button>
+                            <span th:if="${du.relationship == 'RECEIVED'}" style="display:flex;gap:4px;align-items:center;">
+                                <span style="font-size:12px;color:#e65100;">对方已申请</span>
+                                <a th:href="@{/profile/{id}(id=${du.user.id})}" class="btn btn-success btn-sm">去处理</a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </th:block>
     </div>
 </div>
 
 <script th:replace="~{fragments :: scripts}"></script>
 <script>
-function switchTab(tab) {
-    document.getElementById('tab-friends').style.display = tab === 'friends' ? '' : 'none';
-    document.getElementById('tab-requests').style.display = tab === 'requests' ? '' : 'none';
-    document.getElementById('tab-discover').style.display = tab === 'discover' ? '' : 'none';
-    document.querySelectorAll('.tab').forEach(function(t, i) {
-        t.classList.toggle('active', ['friends','requests','discover'][i] === tab);
-    });
+function applyFriendFilter() {
+    var form = document.getElementById('friendFilterForm');
+    // 保留当前group参数
+    var url = new URL(window.location.href);
+    var group = url.searchParams.get('group');
+    if (group) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'group';
+        input.value = group;
+        form.appendChild(input);
+    }
+    form.submit();
 }
+
+// 页面加载后，如果有group参数，自动高亮对应统计项
+(function() {
+    var url = new URL(window.location.href);
+    var group = url.searchParams.get('group');
+    if (group) {
+        // 把搜索和在线筛选也同步到表单
+        var keyword = url.searchParams.get('keyword');
+        var online = url.searchParams.get('online');
+        if (keyword) {
+            var kwInput = document.querySelector('input[name="keyword"]');
+            if (kwInput) kwInput.value = keyword;
+        }
+        if (online) {
+            var onlineSelect = document.querySelector('select[name="online"]');
+            if (onlineSelect) onlineSelect.value = online;
+        }
+    }
+})();
 </script>
 </body>
 </html>
